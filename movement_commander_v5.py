@@ -8,6 +8,7 @@
 import time
 import random
 import math
+import serial
 from threading import Thread
 
 # ROBOSUB
@@ -26,9 +27,8 @@ class MovementCommander:
     def __init__(self, usingvision, usingpixhawk, usingsim):
         # setting up board serial port
         print("Communicating with Arduino...")
-
-        # something so the serial buffer doesn't overflow
-        print("Communication with Arduino started...")
+        self.ardserial = serial.Serial('/dev/ttyACM0', 9600)
+        self.ardserial.flushInput()
 
         self.YawOffset = 0
         self.PitchOffset = 0
@@ -169,6 +169,7 @@ class MovementCommander:
             self.InitialTime = time.perf_counter()
             self.ElapsedTime = 0.0
             self.UpdateThrustersPID()
+            self.SendToArduino()
             self.IsMoveCommand = False
             self.Basic = False
             self.Advanced = False
@@ -255,6 +256,16 @@ class MovementCommander:
 
     def SendToArduino(self):
         outdata = "";
+        outdata += str(self.ThrusterLB.GetSpeed())
+        outdata += str(self.ThrusterLF.GetSpeed())
+        outdata += str(self.ThrusterRB.GetSpeed())
+        outdata += str(self.ThrusterRF.GetSpeed())
+        outdata += str(self.ThrusterBL.GetSpeed())
+        outdata += str(self.ThrusterBR.GetSpeed())
+        outdata += str(self.ThrusterFL.GetSpeed())
+        outdata += str(self.ThrusterFR.GetSpeed())
+        outdata += "\n"
+        self.ardserial.write(outdata.encode('ascii'))
 
     def CheckIfPositionDone(self, threshold=3, timethreshold=5):
         if (abs(self.PixHawk.getNorth() - self.NorthOffset) < threshold) and (
