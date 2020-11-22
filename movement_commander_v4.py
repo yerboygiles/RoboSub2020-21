@@ -76,7 +76,6 @@ class MovementCommander:
         self.ThrusterFR = ThrusterDriver(9, self.board)  # front right
         print("Wait 3 to arm thrusters...")
         time.sleep(3)
-68
         # power values to set to the thruster hardpoints
         # horizontally oriented
         self.PowerLB = 0

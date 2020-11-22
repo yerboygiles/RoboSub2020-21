@@ -61,16 +61,14 @@ class MovementCommander:
         else:
             print("MovementCommander is not using Telemetry...")
         # thruster hardpoint classes
-        self.ThrusterLB = ThrusterDriver()  # left back
-        self.ThrusterLF = ThrusterDriver()  # left front
-        self.ThrusterRB = ThrusterDriver()  # right back
-        self.ThrusterRF = ThrusterDriver()  # right front
-        self.ThrusterBL = ThrusterDriver()  # back left
-        self.ThrusterBR = ThrusterDriver()  # back right
-        self.ThrusterFL = ThrusterDriver()  # front left
-        self.ThrusterFR = ThrusterDriver()  # front right
-        print("Wait 3 to arm thrusters...")
-        time.sleep(3)
+        self.ThrusterLB = ThrusterDriver("LB")  # left back
+        self.ThrusterLF = ThrusterDriver("LF")  # left front
+        self.ThrusterRB = ThrusterDriver("RB")  # right back
+        self.ThrusterRF = ThrusterDriver("RF")  # right front
+        self.ThrusterBL = ThrusterDriver("BL")  # back left
+        self.ThrusterBR = ThrusterDriver("BR")  # back right
+        self.ThrusterFL = ThrusterDriver("FL")  # front left
+        self.ThrusterFR = ThrusterDriver("FR")  # front right
         # power values to set to the thruster hardpoints
         # horizontally oriented
         self.PowerLB = 0
@@ -254,8 +252,14 @@ class MovementCommander:
         else:
             self.InitialTime = time.perf_counter()
 
+    def TurnOffArduino(self):
+        self.ardserial.write("END\n".encode('ascii'))
+
+    def TurnOnArduino(self):
+        self.ardserial.write("START\n".encode('ascii'))
+
     def SendToArduino(self):
-        outdata = "";
+        outdata = ""
         outdata += str(self.ThrusterLB.GetSpeed())
         outdata += str(self.ThrusterLF.GetSpeed())
         outdata += str(self.ThrusterRB.GetSpeed())
@@ -650,7 +654,8 @@ def MapToPWM(x) -> float:
 # dedicated class to driving a specific thruster
 # has own PID, thruster, speed
 class ThrusterDriver:
-    def __init__(self):
+    def __init__(self, name):
+        self.name = name
         self.speed = 0
 
     def SetSpeed(self, speed):  # speed is a value between -100 and 100
