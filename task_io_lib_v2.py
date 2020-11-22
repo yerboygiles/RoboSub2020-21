@@ -7,7 +7,7 @@
 # as well as the AI/TF/vision integration
 # Allows the movement_commander to update at all times, causing no lag for switching commands
 import time
-from movement_commander_v4 import MovementCommander
+from movement_commander_v5 import MovementCommander
 
 
 class TaskIO:
