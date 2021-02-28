@@ -1,7 +1,7 @@
 import pygame
 import math
 from pygame.locals import *
-
+import sys
 from OpenGL.GL import *
 from OpenGL.GLU import *
 
@@ -100,3 +100,15 @@ class Telemetry:
         # glRotatef(-roll, 1, 0, 0)
         # glRotatef(-yaw, 0, 0, 1)
         # glRotatef(-pitch, 0, 1, 0)
+
+
+clock = pygame.time.Clock()
+Telemetry()
+simExit = False
+while not simExit:
+    clock.tick(60)
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            simExit = True
+            pygame.quit()
+            sys.exit()

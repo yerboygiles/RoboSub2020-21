@@ -1,7 +1,7 @@
 #!python3
 # Author: Theodor Giles
-# Created: 8/7/20
-# Last Edited 8/12/20
+# Created: 11/22/20
+# Last Edited 11/22/20
 # Description:
 # This program manages the commands/movement/physical control of the RoboSub V1
 #
@@ -12,9 +12,6 @@ import serial
 from threading import Thread
 
 # ROBOSUB
-A_TARGET = 1
-A_POSITION = 2
-A_GYRO = 3
 
 MAX_THROTTLE = 35
 
@@ -113,14 +110,15 @@ class MovementCommander:
         self.ADVANCED_MOVEMENT_COMMANDS = [
             "LOG START POINT",
             "RETURN TO START",
+            "GYRO TO",
+            "POSITION TO"
         ]
         self.TARGET_MOVEMENT_COMMANDS = [
             "MOVE TO TARGET",
             "RAM TARGET",
-            "FIRE AT TARGET"
+            "FIRE AT TARGET",
+            "FOLLOW TARGET"
         ]
-        self.GYRO_TO = "GYRO TO"
-        self.POSITION_TO = "POSITION TO"
         # currently only for firing torpedoes, maybe a claw action later on?
         self.SUPPLEMENTARY_COMMANDS = [
             "FIRE TORPEDO"
@@ -138,119 +136,24 @@ class MovementCommander:
         self.TargetList = []
         print("MovementCommander initialized...")
 
-    # Concept code, basically for checking if the Sub has already seen the detected object.
-    def IsTargetInMemory(self, label, x, y, z):
-        NewTarget = [label, x, y, z]
-        InMemory = False
-        for target in self.TargetList:
-            # Determining how far something could be next to the said target,
-            DistanceConfidence = math.sqrt(target[4]) * 1.5
-            WithinX = abs(NewTarget[1] - target[1]) > DistanceConfidence
-            WithinY = abs(NewTarget[2] - target[2]) > DistanceConfidence
-            WithinZ = abs(NewTarget[3] - target[3]) > DistanceConfidence
-            if (target[0] != NewTarget[0]) and WithinX and WithinY and WithinZ:
-                InMemory = True
-        return InMemory
-
-    # Concept code, puts target into memory
-    def SaveTargetToMemory(self, label, x, y, z, area):
-        TargetInfo = [label, x, y, z, area]
-        self.TargetList.append(TargetInfo)
-
     # handles list of commands
     def receiveCommands(self, commandlist):
-        self.WaitForSupplementary = False
-        self.TargetOrPosition = 0
-        self.CommandIndex = None
+        # going through commands in parsed list
+        self.CommandIndex = 0
         for command in commandlist:
-            print("Command data read: ", command)
-            self.InitialTime = time.perf_counter()
-            self.ElapsedTime = 0.0
-            self.UpdateThrustersPID()
-            self.SendToArduino()
-            self.IsMoveCommand = False
-            self.Basic = False
-            self.Advanced = False
-            if self.WaitForSupplementary:
-                trupleindex = 0
-                targetorval = False
-                for posstarget in self.POSSIBLE_TARGETS:
-                    if command == posstarget:
-                        targetorval = True
-                if not targetorval:
-                    for value in command.split('x'):
-                        if trupleindex == 0:
-                            self.YawOffset = int(value)
-                        elif trupleindex == 1:
-                            self.PitchOffset = int(value)
-                        elif trupleindex == 2:
-                            self.RollOffset = int(value)
-                        trupleindex += 1
-                self.IsMoveCommand = True
-            for i in range(len(self.BASIC_MOVEMENT_COMMANDS)):
-                if command == self.BASIC_MOVEMENT_COMMANDS[i]:
-                    self.IsMoveCommand = True
-                    self.Basic = True
-                    self.CommandIndex = i
-            for i in range(len(self.ADVANCED_MOVEMENT_COMMANDS)):
-                if command == self.ADVANCED_MOVEMENT_COMMANDS[i]:
-                    self.IsMoveCommand = True
-                    self.Advanced = True
-                    self.CommandIndex = i
-            for i in range(len(self.TARGET_MOVEMENT_COMMANDS)):
-                if command == self.TARGET_MOVEMENT_COMMANDS[i]:
-                    self.WaitForSupplementary = True
-                    self.TargetOrPosition = A_TARGET
-                    self.CommandIndex = i
-            if command == self.GYRO_TO:
-                self.WaitForSupplementary = True
-                self.TargetOrPosition = A_GYRO
-            if command == self.POSITION_TO:
-                self.WaitForSupplementary = True
-                self.TargetOrPosition = A_POSITION
-            if self.IsMoveCommand:
-                self.Running = True
-                self.GyroRunning = True
-                self.PositionRunning = True
-                try:
-                    while self.Running:
-                        if self.UsingSim:
-                            self.TelemetrySim.update(self.PixHawk.getYaw())
-                        self.WaitForSupplementary = False
-                        print("Yaw: ", self.PixHawk.getYaw())
-                        print("Pitch: ", self.PixHawk.getPitch())
-                        print("Down: ", self.PixHawk.getDown())
-                        if self.TargetOrPosition == A_GYRO:
-                            self.CheckIfGyroDone()
-                            self.Running = self.GyroRunning
-                        elif self.TargetOrPosition == A_POSITION:
-                            self.CheckIfPositionDone()
-                            self.Running = self.PositionRunning
-                        elif self.TargetOrPosition == A_TARGET:
-                            self.TargetCommand(self.CommandIndex, command)
-                        elif self.Basic:
-                            self.BasicCommand(self.CommandIndex)
-                        elif self.Advanced:
-                            self.AdvancedCommand(self.CommandIndex)
-                        self.UpdateThrustersPID()
-                    self.TargetOrPosition = 0
-                except:
-                    self.BrakeAllThrusters()
-        self.BrakeAllThrusters()
+            for basiccommand in self.BASIC_MOVEMENT_COMMANDS:
+                i = 0
+                if command == basiccommand:
+                    self.BasicCommand(GENERAL_THROTTLE,i)
+                i += 1
 
-    def CheckIfGyroDone(self, threshold=3, timethreshold=5):
-        self.PowerBR = -10
-        self.PowerBL = -10
-        self.PitchOffset = 0
-        if (abs(self.PixHawk.getYaw() - self.YawOffset) < threshold) and (
-                abs(self.PixHawk.getPitch() - self.PitchOffset) < threshold) and (
-                abs(self.PixHawk.getRoll() - self.RollOffset) < threshold):
-            self.ElapsedTime = time.perf_counter() - self.InitialTime
-            print("Within threshold. Waiting ", timethreshold, "...")
-            if self.ElapsedTime >= timethreshold:
-                self.GyroRunning = False
-        else:
-            self.InitialTime = time.perf_counter()
+            for advancedcommand in self.ADVANCED_MOVEMENT_COMMANDS:
+                i = 0
+                if command == advancedcommand:
+                    self.AdvancedCommand(GENERAL_THROTTLE,i)
+                i += 1
+            self.CommandIndex+=1
+    def rotateTo(self, wantedyaw, wantedpitch, wantedroll):
 
     def TurnOffArduino(self):
         self.ardserial.write("END\n".encode('ascii'))
@@ -276,11 +179,12 @@ class MovementCommander:
                 abs(self.PixHawk.getEast() - self.EastOffset) < threshold) and (
                 abs(self.PixHawk.getDown() - self.DownOffset) < threshold):
             self.ElapsedTime = time.perf_counter() - self.InitialTime
-            print("Within threshold. Waiting ", timethreshold, "...")
+            print("Within position threshold. Waiting ", timethreshold, "...")
             if self.ElapsedTime >= timethreshold:
-                self.GyroRunning = False
+                self.PositionRunning = False
         else:
             self.InitialTime = time.perf_counter()
+        return self.PositionRunning
 
     def UpdateThrustersPID(self):
         self.PixHawk.UpdateGyro()
@@ -344,7 +248,7 @@ class MovementCommander:
     #     "SURFACE",
     #     "IDLE"]
 
-    def BasicCommand(self, speed=GENERAL_THROTTLE):
+    def BasicCommand(self, speed=GENERAL_THROTTLE, commandnum):
         if self.UsingPixHawk:
             self.PixHawk.UpdateGyro()
             self.PixHawk.CalculateError(self.YawOffset,
@@ -356,7 +260,7 @@ class MovementCommander:
             self.PixHawk.PID()
         DownConst = -5.0
         # 0 = FORWARD
-        if self.CommandIndex == 0:
+        if commandnum == 0:
             # horizontal
             self.PowerLB = speed
             self.PowerLF = speed
@@ -369,7 +273,7 @@ class MovementCommander:
             self.PowerFL = DownConst
 
         # 1 = REVERSE
-        if self.CommandIndex == 1:
+        if commandnum == 1:
             # horizontal
             self.PowerLB = -speed
             self.PowerLF = -speed
@@ -382,7 +286,7 @@ class MovementCommander:
             self.PowerFL = DownConst
 
         # 2 = LEFT
-        if self.CommandIndex == 2:
+        if commandnum == 2:
             # horizontal
             self.PowerLB = speed
             self.PowerLF = -speed
@@ -395,7 +299,7 @@ class MovementCommander:
             self.PowerFL = DownConst
 
         # 3 = RIGHT
-        if self.CommandIndex == 3:
+        if commandnum == 3:
             # horizontal
             self.PowerLB = -speed
             self.PowerLF = speed
@@ -408,7 +312,7 @@ class MovementCommander:
             self.PowerFL = DownConst
 
         # 4 = CLOCKWISE
-        if self.CommandIndex == 4:
+        if commandnum == 4:
             self.PowerLB = speed
             self.PowerLF = -speed
             self.PowerRB = -speed
@@ -420,7 +324,7 @@ class MovementCommander:
             self.PowerFL = DownConst
 
         # 5 = COUNTERCLOCKWISE
-        if self.CommandIndex == 5:
+        if commandnum == 5:
             self.PowerLB = -speed
             self.PowerLF = speed
             self.PowerRB = speed
@@ -431,7 +335,7 @@ class MovementCommander:
             self.PowerFL = DownConst
 
         # 6 = DIVE
-        if self.CommandIndex == 6:
+        if commandnum == 6:
             self.PowerLB = 0.0
             self.PowerLF = 0.0
             self.PowerRB = 0.0
@@ -443,7 +347,7 @@ class MovementCommander:
             self.PowerFL = -speed
 
         # 7 = SURFACE
-        if self.CommandIndex == 7:
+        if commandnum == 7:
             self.PowerLB = 0.0
             self.PowerLF = 0.0
             self.PowerRB = 0.0
@@ -455,7 +359,7 @@ class MovementCommander:
             self.PowerFL = speed
 
         # 8 = IDLE
-        if self.CommandIndex == 8:
+        if commandnum == 8:
             self.PowerLB = 0.0
             self.PowerLF = 0.0
             self.PowerRB = 0.0
@@ -584,6 +488,7 @@ class MovementCommander:
                 while self.PositionRunning:
                     self.CheckIfPositionDone(threshold=6, timethreshold=3)
                     self.UpdateThrustersPID()
+                    self.SendToArduino()
                 for j in range(7):
                     self.YawOffset = j * 55 - 165
                     for k in range(5):
@@ -595,6 +500,7 @@ class MovementCommander:
                             FoundTarget = self.VisionAI.process_image(target)
                             self.CheckIfGyroDone(threshold=5, timethreshold=2)
                             self.UpdateThrustersPID()
+                            self.SendToArduino()
                         if FoundTarget:
                             break
                     if FoundTarget:
@@ -614,6 +520,7 @@ class MovementCommander:
                         FoundTarget = self.VisionAI.process_image(target)
                         self.CheckIfGyroDone(threshold=5, timethreshold=2)
                         self.UpdateThrustersPID()
+                        self.SendToArduino()
                     if FoundTarget:
                         break
                 if FoundTarget:

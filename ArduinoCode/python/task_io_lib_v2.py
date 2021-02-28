@@ -1,7 +1,7 @@
 #!python3
 # Author: Theodor Giles
 # Created: 8/7/20
-# Last Edited 8/7/20
+# Last Edited 11/22/20
 # Description:
 # This program manages the conversion of the mission.txt into commands that the MovementCommander can understand
 # as well as the AI/TF/vision integration
@@ -26,8 +26,7 @@ class TaskIO:
         # Testing
         self.Commands = open(self.Filename)
         for CommandLine in self.Commands:
-            for ParsedCommand in CommandLine.strip().split(','):
-                self.CommandList.append(ParsedCommand)
+            self.CommandList.append(CommandLine)
         print("Commands read...")
         self.Commands.close()
         print("Commands: ", self.CommandList)
