@@ -12,7 +12,7 @@ self.ThrusterFR = ThrusterDriver(9, self.board)  # front right
 
 byte stopped = 1;
 byte waiting = 2;
-byte active = 3
+byte active = 3;
 byte state = stopped;
 byte LBpin = 2; //left back
 byte LFpin = 3; //left front
@@ -56,13 +56,14 @@ void setup() {
 }
 
 void loop(){
-
+  
+  String token;
     /*I want the motor data in stuff to be structured like:
      * LBpower - LFpower - RBpower - RFpower - BLpower - BRpower - FLpower - FRpower
      *
      */
     if (Serial.available()) {
-      String datain = Serial.readString(); //reading
+      char* datain = Serial.readString(); //reading
       Serial.print("Received Data => ");
       Serial.println(datain);//display same received Data back in serial monitor.
       if(state == stopped){
@@ -85,9 +86,9 @@ void loop(){
       else if(state == active){
         //thruster power control, receive from the fruit
         int i = 0;
-        if datain != "END":
+        if (datain != "END"){
 
-            token = strtok(datain,s);
+            token = strtok(datain,',');
             /* walk through values in the datain we're getting */
             while( token != NULL ) {
               thrusterpower[i] = int(token);

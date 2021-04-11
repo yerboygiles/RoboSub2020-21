@@ -7,18 +7,18 @@
 # as well as the AI/TF/vision integration
 # Allows the movement_commander to update at all times, causing no lag for switching commands
 import time
-from movement_commander_v5 import MovementCommander
+from vector_commander import MovementCommander
 
 
 class TaskIO:
     # init
-    def __init__(self, filename, usingvision, usingpixhawk, usingsim):
+    def __init__(self, filename, usingvision, usinggyro, usingsim):
         self.Filename = filename
         self.UsingVision = usingvision
-        self.UsingPixhawk = usingpixhawk
+        self.UsingGyro = usinggyro
         self.UsingSim = usingsim
         self.Active = False
-        self.Movement = MovementCommander(self.UsingVision, self.UsingPixhawk, self.UsingSim)
+        self.Movement = MovementCommander(self.UsingVision, self.UsingGyro, self.UsingSim)
         self.CommandList = []
 
     # get tasks from the .txt and completes them

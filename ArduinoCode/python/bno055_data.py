@@ -143,15 +143,6 @@ class Sensor9Axis:
     # parse position object data from pixhawk, can then pass to other programs
     def UpdatePosition(self):
         i = 0
-        for CommaParse in str(self.vehicle.location.local_frame).split(','):
-            if CommaParse is not None:
-                for EqualParse in CommaParse.split('='):
-                    try:
-                    except:
-                        pass
-                        # print("error reading position")
-        # print(self.Position)
-
     # position read when starting the RoboSub
     def getStartingPosition(self):
         return self.StartingPosition

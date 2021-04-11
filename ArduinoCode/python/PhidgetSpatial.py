@@ -1,13 +1,18 @@
 #!python3
 # Author: Theodor Giles
 # Created: 7/15/20
-# Last Edited 2/28/21
+# Last Edited 8/12/20
 # Description:
-# Modified version of the gyro data class, dedicated for merging gyro data
+# gets data from the simulated/non-simulated pixhawk for attitude, positioning, and maybe some
+# other cool tasks it can do
 
 import time
 import math
 
+# sitl is basically a simulation, can be "ran" from any computer kinda? I will figure out a way to make an incorporated
+# 3d python sim for managing all this at some point
+# sitl = dronekit_sitl.start_default()  # (sitl.start)
+# connection_string = sitl.connection_string()
 GYRO: int = 0
 POSITION: int = 1
 YAW: int = 0
@@ -26,7 +31,8 @@ def MapToAngle(x):
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
 
 
-class GyroMerger:
+class Sensor9Axis:
+    StringIn = ""
     Gyro = [0.0, 0.0, 0.0]
     Position = [0.0, 0.0, 0.0]
     Angular_Motions = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
@@ -38,9 +44,9 @@ class GyroMerger:
     # gyro              position
 
     # this is a comment
-    Kp = [[0.7, 0.5, 0.5], [0.3, 0.4, 0.4]]  # constant to modify PID
-    Ki = [[0.0, 0.00, 0.00], [0.1, 0.1, 0.1]]  # constant to modify PID
-    Kd = [[0.3, 0.3, 0.3], [0.1, 0.1, 0.1]]  # constant to modify PID
+    Kp = [[0.7, 0.5, 0.5], [0.3, 0.4, 0.4]]  #constant to modify PID
+    Ki = [[0.0, 0.00, 0.00], [0.1, 0.1, 0.1]]  #constant to modify PID
+    Kd = [[0.3, 0.3, 0.3], [0.1, 0.1, 0.1]]  #constant to modify PID
 
     North_PID = 0.0
     North_P = 0.0
@@ -72,35 +78,24 @@ class GyroMerger:
     Roll_I = 0.0
     Roll_D = 0.0
 
-    Master_Gyro = None
-    Slave_Gyro1 = None
-    Slave_Gyro2 = None
-    Yaw_Discrepancy = 0
-    Pitch_Discrepancy = 0
-    Roll_Discrepancy = 0
+    def __init__(self,board):
 
-    North_Discrepancy = 0
-    East_Discrepancy = 0
-    Down_Discrepancy = 0
-
-    def __init__(self, board, master, slave1, slave2):  # not the Boba Fett one
 
         # read info from vehicle
         ser = board
-
-        self.Master_Gyro = master
-        self.Slave_Gyro1 = slave1
-        self.Slave_Gyro2 = slave2
 
         # arm vehicle to see position
         print('Gyro Armed')
 
         # - Read the actual position North, East, and Down
+        self.vehicle.add_attribute_listener('position', self.position_callback)  # -- message type, callback function
         self.UpdatePosition()
         self.StartingPosition = self.Position
 
         # - Read the actual attitude: Roll, Pitch, and Yaw
+        self.vehicle.add_attribute_listener('attitude', self.gyro_callback)  # -- message type, callback function
         self.UpdateGyro()
+        self.SubtractYaw = self.Gyro[YAW]
         self.StartingGyro = self.Gyro
 
         # - Read the actual depth:
@@ -110,43 +105,50 @@ class GyroMerger:
 
     # parse gyro object data from pixhawk, can then pass to other programs
     def UpdateGyro(self):
-        self.Yaw_Discrepancy = self.Gyro[YAW] - self.Slave_Gyro1.Gyro[YAW]
-        self.Pitch_Discrepancy = self.Gyro[PITCH] - self.Slave_Gyro1.Gyro[PITCH]
-        self.Roll_Discrepancy = self.Gyro[ROLL] - self.Slave_Gyro1.Gyro[ROLL]
-
-        if self.Yaw_Discrepancy < 20:
-            self.Gyro[YAW] = (self.Master_Gyro.Gyro[YAW] + self.Slave_Gyro1.Gyro[YAW]) / 2
-        else:
-            self.Gyro[YAW] = self.Master_Gyro.Gyro[YAW]
-        if self.Pitch_Discrepancy < 20:
-            self.Gyro[PITCH] = (self.Master_Gyro.Gyro[PITCH] + self.Slave_Gyro1.Gyro[PITCH]) / 2
-        else:
-            self.Gyro[PITCH] = self.Master_Gyro.Gyro[PITCH]
-        if self.Roll_Discrepancy < 20:
-            self.Gyro[ROLL] = (self.Master_Gyro.Gyro[ROLL] + self.Slave_Gyro1.Gyro[ROLL]) / 2
-        else:
-            self.Gyro[ROLL] = self.Master_Gyro.Gyro[ROLL]
+        i = 0
+        for CommaParse in str(self.StringIn).split(','):
+            if CommaParse is not None:
+                for EqualParse in CommaParse.split('='):
+                    try:
+                        if i == 1:
+                            # (180 / math.pi)
+                            # "angular motion" is basically just the difference between the
+                            # last recorded gyro data and the current gyro data. The algorithm
+                            # I looked at for this had an IMU that gave the raw gyro data, but
+                            # the pixhawk does not return raw gyro data, so I have to improvise.
+                            # basically the same value as self.Error, but I have to set it here
+                            # so I can get the new gyro data right after.
+                            self.Angular_Motions[GYRO][PITCH] = (
+                                    self.Gyro[PITCH] - (float(EqualParse) * (180 / math.pi)))
+                            self.Gyro[PITCH] = round(float(EqualParse) * (180 / math.pi), 5)
+                        if i == 3:
+                            self.Angular_Motions[GYRO][YAW] = (
+                                    self.Gyro[YAW] - (float(EqualParse) * (180 / math.pi)))
+                            self.Gyro[YAW] = round((float(EqualParse) * (180 / math.pi)), 5)
+                        if i == 5:
+                            self.Angular_Motions[GYRO][ROLL] = (
+                                    self.Gyro[ROLL] - (float(EqualParse) * (180 / math.pi)))
+                            self.Gyro[ROLL] = round(float(EqualParse) * (180 / math.pi), 5)
+                        if i == 7:
+                            self.Position[NORTH] = float(EqualParse)
+                        if i == 9:
+                            self.Position[EAST] = float(EqualParse)
+                        if i == 11:
+                            self.Position[DOWN] = float(EqualParse)
+                        i += 1
+                    except:
+                        pass
 
     # parse position object data from pixhawk, can then pass to other programs
     def UpdatePosition(self):
-        self.North_Discrepancy = self.Position[NORTH] - self.Slave_Gyro1.Position[NORTH]
-        self.East_Discrepancy = self.Position[EAST] - self.Slave_Gyro1.Position[EAST]
-        self.Down_Discrepancy = self.Position[DOWN] - self.Slave_Gyro1.Position[DOWN]
-
-        if self.North_Discrepancy < 20:
-            self.Position[NORTH] = (self.Master_Gyro.Position[NORTH] + self.Slave_Gyro1.Position[NORTH]) / 2
-        else:
-            self.Position[NORTH] = self.Master_Gyro.Position[NORTH]
-        if self.East_Discrepancy < 20:
-            self.Position[EAST] = (self.Master_Gyro.Position[EAST] + self.Slave_Gyro1.Position[EAST]) / 2
-        else:
-            self.Position[EAST] = self.Master_Gyro.Position[EAST]
-        if self.Down_Discrepancy < 30:
-            self.Position[DOWN] = (self.Master_Gyro.Position[DOWN] + self.Slave_Gyro1.Position[DOWN]) / 2
-        else:
-            self.Position[DOWN] = self.Master_Gyro.Position[DOWN]
-
-        # print("error reading position")
+        i = 0
+        for CommaParse in str(self.vehicle.location.local_frame).split(','):
+            if CommaParse is not None:
+                for EqualParse in CommaParse.split('='):
+                    try:
+                    except:
+                        pass
+                        # print("error reading position")
         # print(self.Position)
 
     # position read when starting the RoboSub

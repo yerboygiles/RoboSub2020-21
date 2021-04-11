@@ -21,7 +21,7 @@ GENERAL_THROTTLE = 17.5
 class MovementCommander:
 
     # initialize everything to supposed starting position
-    def __init__(self, usingvision, usingpixhawk, usingsim):
+    def __init__(self, usingvision, usinggyro, usingsim):
         # setting up board serial port
         print("Communicating with Arduino...")
         self.ardserial = serial.Serial('/dev/ttyACM0', 9600)
@@ -36,7 +36,7 @@ class MovementCommander:
         self.DownOffset = 0
 
         self.UsingVision = usingvision
-        self.UsingPixHawk = usingpixhawk
+        self.UsingGyro = usinggyro
         self.UsingSim = usingsim
         if self.UsingVision:
             import Theos_Really_Good_Detection_Script as obj_det
@@ -45,7 +45,7 @@ class MovementCommander:
         else:
             print("MovementCommander is not using Vision AI...")
 
-        if self.UsingPixHawk:
+        if self.UsingGyro:
             from pixhawk_data import PixHawk
             self.PixHawk = PixHawk()
             print("MovementCommander is using PixHawk...")
