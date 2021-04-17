@@ -1,14 +1,41 @@
 #include <Servo.h>
-/*      
-self.ThrusterLB = ThrusterDriver(2, self.board)  # left back
-self.ThrusterLF = ThrusterDriver(4, self.board)  # left front
-self.ThrusterRB = ThrusterDriver(3, self.board)  # right back
-self.ThrusterRF = ThrusterDriver(5, self.board)  # right front
-self.ThrusterBL = ThrusterDriver(6, self.board)  # back left
-self.ThrusterBR = ThrusterDriver(7, self.board)  # back right
-self.ThrusterFL = ThrusterDriver(8, self.board)  # front left
-self.ThrusterFR = ThrusterDriver(9, self.board)  # front right
+#include <Wire.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BNO055.h>
+#include <utility/imumaths.h>
+
+/* This driver uses the Adafruit unified sensor library (Adafruit_Sensor),
+   which provides a common 'type' for sensor data and some helper functions.
+   To use this driver you will also need to download the Adafruit_Sensor
+   library and include it in your libraries folder.
+   You should also assign a unique ID to this sensor for use with
+   the Adafruit Sensor API so that you can identify this particular
+   sensor in any data logs, etc.  To assign a unique ID, simply
+   provide an appropriate value in the constructor below (12345
+   is used by default in this example).
+   Connections
+   ===========
+   Connect SCL to analog 5
+   Connect SDA to analog 4
+   Connect VDD to 3.3-5V DC
+   Connect GROUND to common ground
+   History
+   =======
+   2015/MAR/03  - First release (KTOWN)
+   2021/APR/16  - Integration into robosub (OTUS)
 */
+
+double xPos = 0, yPos = 0, zPos = 0, headingVel = 0;
+
+uint16_t BNO055_SAMPLERATE_DELAY_MS = 10; //how often to read data from the board
+uint16_t PRINT_DELAY_MS = 500; // how often to print the data
+uint16_t printCount = 0; //counter to avoid printing every 10MS sample
+
+double ACCEL_VEL_TRANSITION =  (double)(BNO055_SAMPLERATE_DELAY_MS) / 1000.0;
+double ACCEL_POS_TRANSITION = 0.5 * ACCEL_VEL_TRANSITION * ACCEL_VEL_TRANSITION;
+double DEG_2_RAD = 0.01745329251; //trig functions require radians, BNO055 outputs degrees
+
+Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28);
 
 byte LBpin = 2; //left back
 byte LFpin = 3; //left front
@@ -42,6 +69,22 @@ byte index;
 
 #define arr_len( x )  ( sizeof( x ) / sizeof( *x ) )
 
+void displaySensorDetails(void)
+{
+  sensor_t sensor;
+  bno.getSensor(&sensor);
+  Serial1.println("------------------------------------");
+  Serial1.print  ("Sensor:       "); Serial1.println(sensor.name);
+  Serial1.print  ("Driver Ver:   "); Serial1.println(sensor.version);
+  Serial1.print  ("Unique ID:    "); Serial1.println(sensor.sensor_id);
+  Serial1.print  ("Max Value:    "); Serial1.print(sensor.max_value); Serial1.println(" xxx");
+  Serial1.print  ("Min Value:    "); Serial1.print(sensor.min_value); Serial1.println(" xxx");
+  Serial1.print  ("Resolution:   "); Serial1.print(sensor.resolution); Serial1.println(" xxx");
+  Serial1.println("------------------------------------");
+  Serial1.println("");
+  delay(500);
+}
+
 void setup() {
   // put your setup code here, to run once:
   LBthruster.attach(2);
@@ -61,22 +104,51 @@ void setup() {
   BRthruster.writeMicroseconds(1500);
   FLthruster.writeMicroseconds(1500);
   FRthruster.writeMicroseconds(1500);
+  
   delay(7000); // delay to allow the ESC to recognize the stopped signal.
-  Serial.begin(9600);
-  Serial.println("Thrusters armed.");
+  Serial1.begin(115200);
+  Serial1.println("Thrusters armed.");
+  Serial1.println("Orientation Sensor Test"); Serial1.println("");
+  /* Initialise the sensor */
+  if(!bno.begin())
+  {
+    /* There was a problem detecting the BNO055 ... check your connections */
+    Serial1.print("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
+    while(1);
+  }
+  
+  delay(1000);
+
+  /* Use external crystal for better accuracy */
+  bno.setExtCrystalUse(true);
+   
+  /* Display some basic information on this sensor */
+  displaySensorDetails();
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-  if(Serial.available()){
+  
+  sensors_event_t orientationData , linearAccelData;
+  bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
+  //  bno.getEvent(&angVelData, Adafruit_BNO055::VECTOR_GYROSCOPE);
+  bno.getEvent(&linearAccelData, Adafruit_BNO055::VECTOR_LINEARACCEL);
+
+  xPos = xPos + ACCEL_POS_TRANSITION * linearAccelData.acceleration.x;
+  yPos = yPos + ACCEL_POS_TRANSITION * linearAccelData.acceleration.y;
+  zPos = zPos + ACCEL_POS_TRANSITION * linearAccelData.acceleration.z;
+  
+  headingVel = ACCEL_VEL_TRANSITION * linearAccelData.acceleration.x / cos(DEG_2_RAD * orientationData.orientation.x);
+
+  if(Serial1.available()){
     byte index = 0;
-    strinput = Serial.readString();
+    strinput = Serial1.readString();
     strinput.toCharArray(input, 40);
-    Serial.print("Input string = ");
-    Serial.println(input);
+    Serial1.print("Input string = ");
+    Serial1.println(input);
     ptr = strtok(input, ":");  // takes a list of delimiters
     if((strinput.compareTo("STOP")==10)) {
-      Serial.println("Stopping.");
+      Serial1.println("Stopping.");
       for(int i=0; i < arr_len(thrusterpower); i++){
         thrusterpower[i] = 1500;
       }
@@ -99,6 +171,27 @@ void loop() {
   BRthruster.writeMicroseconds(thrusterpower[5]);
   FLthruster.writeMicroseconds(thrusterpower[6]);
   FRthruster.writeMicroseconds(thrusterpower[7]);
+  
+  if (printCount * BNO055_SAMPLERATE_DELAY_MS >= PRINT_DELAY_MS) {
+    Serial1.print("Orientation:");
+    Serial1.print(orientationData.orientation.x);
+    Serial1.print(":");
+    Serial1.print(orientationData.orientation.y);
+    Serial1.print(":");
+    Serial1.print(orientationData.orientation.z);
+    Serial1.println("");
+
+//    Serial1.print("Position:");
+//    Serial1.print(xPos);
+//    Serial1.print(":");
+//    Serial1.print(yPos);
+//    Serial1.print(":");
+//    Serial1.print(zPos);
+//    Serial1.println("");
+  }
+  else {
+    printCount = printCount + 1;
+  }
 
 
 }

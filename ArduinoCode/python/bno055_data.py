@@ -45,9 +45,9 @@ class Sensor9Axis:
     # gyro              position
 
     # this is a comment
-    Kp = [[0.7, 0.5, 0.5], [0.3, 0.4, 0.4]]  #constant to modify PID
-    Ki = [[0.0, 0.00, 0.00], [0.1, 0.1, 0.1]]  #constant to modify PID
-    Kd = [[0.3, 0.3, 0.3], [0.1, 0.1, 0.1]]  #constant to modify PID
+    Kp = [[0.7, 0.5, 0.5], [0.3, 0.4, 0.4]]  # constant to modify PID
+    Ki = [[0.0, 0.00, 0.00], [0.1, 0.1, 0.1]]  # constant to modify PID
+    Kd = [[0.3, 0.3, 0.3], [0.1, 0.1, 0.1]]  # constant to modify PID
 
     North_PID = 0.0
     North_P = 0.0
@@ -79,70 +79,62 @@ class Sensor9Axis:
     Roll_I = 0.0
     Roll_D = 0.0
 
-    def __init__(self,board):
-
+    def __init__(self):
 
         # read info from vehicle
-        ser = board
+        self.serial = serial.Serial('/dev/ttyAMA0', 115200)
+        self.serial.flushInput()
 
         # arm vehicle to see position
         print('Gyro Armed')
 
-        # - Read the actual position North, East, and Down
-        self.vehicle.add_attribute_listener('position', self.position_callback)  # -- message type, callback function
-        self.UpdatePosition()
-        self.StartingPosition = self.Position
-
         # - Read the actual attitude: Roll, Pitch, and Yaw
-        self.vehicle.add_attribute_listener('attitude', self.gyro_callback)  # -- message type, callback function
         self.UpdateGyro()
-        self.SubtractYaw = self.Gyro[YAW]
         self.StartingGyro = self.Gyro
+
+        # - Read the actual position North, East, and Down
+        # self.UpdatePosition()
+        # self.StartingPosition = self.Position
 
         # - Read the actual depth:
         time.sleep(3)
-        print("Starting gyro: ", self.Gyro)
-        print("Starting position: ", self.Position)
+        print("Starting gyro: ", self.StartingGyro)
+        # print("Starting position: ", self.Position)
 
     # parse gyro object data from pixhawk, can then pass to other programs
     def UpdateGyro(self):
         i = 0
-        for CommaParse in str(self.StringIn).split(','):
-            if CommaParse is not None:
-                for EqualParse in CommaParse.split('='):
-                    try:
-                        if i == 1:
-                            # (180 / math.pi)
-                            # "angular motion" is basically just the difference between the
-                            # last recorded gyro data and the current gyro data. The algorithm
-                            # I looked at for this had an IMU that gave the raw gyro data, but
-                            # the pixhawk does not return raw gyro data, so I have to improvise.
-                            # basically the same value as self.Error, but I have to set it here
-                            # so I can get the new gyro data right after.
-                            self.Angular_Motions[GYRO][PITCH] = (
-                                    self.Gyro[PITCH] - (float(EqualParse) * (180 / math.pi)))
-                            self.Gyro[PITCH] = round(float(EqualParse) * (180 / math.pi), 5)
-                        if i == 3:
-                            self.Angular_Motions[GYRO][YAW] = (
-                                    self.Gyro[YAW] - (float(EqualParse) * (180 / math.pi)))
-                            self.Gyro[YAW] = round((float(EqualParse) * (180 / math.pi)), 5)
-                        if i == 5:
-                            self.Angular_Motions[GYRO][ROLL] = (
-                                    self.Gyro[ROLL] - (float(EqualParse) * (180 / math.pi)))
-                            self.Gyro[ROLL] = round(float(EqualParse) * (180 / math.pi), 5)
-                        if i == 7:
-                            self.Position[NORTH] = float(EqualParse)
-                        if i == 9:
-                            self.Position[EAST] = float(EqualParse)
-                        if i == 11:
-                            self.Position[DOWN] = float(EqualParse)
-                        i += 1
-                    except:
-                        pass
+        for ColonParse in str(self.serial.readline()).split(':'):
+            if ColonParse is not None:
+                if i == 0:
+                    if ColonParse == "Position":
+                        break
+                if i == 1:
+                    self.Gyro[YAW] = float(ColonParse)
+                if i == 2:
+                    self.Gyro[PITCH] = float(ColonParse)
+                if i == 3:
+                    self.Gyro[ROLL] = float(ColonParse)
+                if i > 3:
+                    break
+        print("Gyro: ", self.Gyro)
 
     # parse position object data from pixhawk, can then pass to other programs
     def UpdatePosition(self):
         i = 0
+        for ColonParse in str(self.serial.readline()).split(':'):
+            if ColonParse is not None:
+                if i == 0:
+                    if ColonParse == "Orientation":
+                        break
+                if i == 1:
+                    self.Position[YAW] = float(ColonParse)
+                if i == 2:
+                    self.Position[PITCH] = float(ColonParse)
+                if i == 3:
+                    self.Position[ROLL] = float(ColonParse)
+                if i > 3:
+                    break
     # position read when starting the RoboSub
     def getStartingPosition(self):
         return self.StartingPosition
@@ -282,4 +274,4 @@ class Sensor9Axis:
 
     # end command/vehicle running
     def Terminate(self):
-        self.vehicle.close()
+        self.serial.close()

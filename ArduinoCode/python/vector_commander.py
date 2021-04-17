@@ -26,15 +26,13 @@ GENERAL_THROTTLE = 17.5
 class MovementCommander:
 
     # initialize everything to supposed starting position
-    def __init__(self, usingvision = False, usinggyro = False, usingsim = False):
+    def __init__(self, usingvision=False, usinggyro=False, usingsim=False):
         # setting up board serial port
         print("Communicating with Arduino...")
-        self.ardserial = serial.Serial('/dev/ttyACM0', 9600)
-        self.ardserial.flushInput()
         self.UsingGyro = usinggyro
         if self.UsingGyro:
-            self.Gyro = bno055_data.Sensor9Axis(self.ardserial)
-            self.GyroMerger = gyro_data_merger.GyroMerger(self.Gyro)
+            self.Gyro = bno055_data.Sensor9Axis()
+            # self.GyroMerger = gyro_data_merger.GyroMerger(self.Gyro)
         self.YawOffset = 0
         self.PitchOffset = 0
         self.RollOffset = 0
@@ -86,7 +84,7 @@ class MovementCommander:
         # the index number of each command streamlined with other
         # functions, but it seems a bit detrimental the more I work with
         # it.
-                # advanced: these commands are much more complicated, will need to
+        # advanced: these commands are much more complicated, will need to
         # develop pathing and a lot of vision/gyro/position integration
         self.ADVANCED_MOVEMENT_COMMANDS = [
             "LOG START POINT",
@@ -95,14 +93,14 @@ class MovementCommander:
             "POSITION TO"
         ]
         self.TARGET_MOVEMENT_COMMANDS = [
-            "MOVE TO TARGET",
-            "RAM TARGET",
-            "FIRE AT TARGET",
-            "FOLLOW TARGET"
+            "MOVE",
+            "RAM",
+            "FIRE AT",
+            "FOLLOW"
         ]
         # currently only for firing torpedoes, maybe a claw action later on?
         self.SUPPLEMENTARY_COMMANDS = [
-            "FIRE TORPEDO"
+            "FIRE TORPEDO AT"
         ]
         # name of object to target sent to TF/openCV AI
         self.TO_TARGET = ""
@@ -113,14 +111,30 @@ class MovementCommander:
             "blue_buoy",
             "green_buoy",
             "orange_buoy",
-            "gate"]
+            "gate",
+            "Cesar"]
         self.TargetList = []
         print("MovementCommander initialized...")
 
-    def BasicVectoring(self):
-        pass
+    def BasicVectoring(self, supplemental):
+        i = 0
+        for SuppParse in str(supplemental).split(':'):
+            if i == 0:
+                self.YawOffset = float(SuppParse)
+            if i == 1:
+                self.PitchOffset = float(SuppParse)
+            if i == 2:
+                self.RollOffset = float(SuppParse)
+            if i > 2:
+                break
+        while self.CheckIfGyroDone():
+            self.Gyro.UpdateGyro()
+            self.Gyro.UpdatePosition()
+            self.UpdateThrusters()
+
     def AdvancedVectoring(self):
         pass
+
     # Concept code, basically for checking if the Sub has already seen the detected object.
     def IsTargetInMemory(self, label, x, y, z):
         NewTarget = [label, x, y, z]
@@ -148,9 +162,10 @@ class MovementCommander:
             for advancedcommand in self.ADVANCED_MOVEMENT_COMMANDS:
                 i = 0
                 if command == advancedcommand:
-                    self.AdvancedMove()
-                i += 1
-            self.CommandIndex+=1
+                    self.BasicVectoring(commandlist[i + 1])
+                i += 2
+            self.CommandIndex += 1
+
     def CheckIfGyroDone(self, threshold=3, timethreshold=5):
         self.PowerBR = -10
         self.PowerBL = -10
@@ -166,12 +181,6 @@ class MovementCommander:
             self.InitialTime = time.perf_counter()
         return self.GyroRunning
 
-    def TurnOffArduino(self):
-        self.ardserial.write("END\n".encode('ascii'))
-
-    def TurnOnArduino(self):
-        self.ardserial.write("START\n".encode('ascii'))
-
     def SendToArduino(self):
         outdata = ""
         outdata += str(self.ThrusterLB.GetSpeed())
@@ -183,7 +192,6 @@ class MovementCommander:
         outdata += str(self.ThrusterFL.GetSpeed())
         outdata += str(self.ThrusterFR.GetSpeed())
         outdata += "\n"
-        self.ardserial.write(outdata.encode('ascii'))
 
     def CheckIfPositionDone(self, threshold=3, timethreshold=5):
         if (abs(self.Gyro.getNorth() - self.NorthOffset) < threshold) and (
@@ -200,11 +208,11 @@ class MovementCommander:
     def UpdateThrusters(self):
         self.Gyro.UpdateGyro()
         self.Gyro.CalculateError(self.YawOffset,
-                                    self.PitchOffset,
-                                    self.RollOffset,
-                                    self.NorthOffset,
-                                    self.EastOffset,
-                                    self.DownOffset)
+                                 self.PitchOffset,
+                                 self.RollOffset,
+                                 self.NorthOffset,
+                                 self.EastOffset,
+                                 self.DownOffset)
         self.Gyro.PID()
         self.ThrusterLB.SetSpeedPID(self.PowerLB, yawpid=self.Gyro.getYawPID())
         self.ThrusterLF.SetSpeedPID(self.PowerLF, yawpid=self.Gyro.getYawPID())
@@ -250,20 +258,17 @@ class MovementCommander:
     # ]
 
     def VectorMovement(self, designatedcoords):
-        #deltaVals = [designatedcoords[dimension] - self.Gyro[dimension] for dimension in range(len(point1))]
+        # deltaVals = [designatedcoords[dimension] - self.Gyro[dimension] for dimension in range(len(point1))]
         self.Gyro.UpdateGyro()
         self.Gyro.CalculateError(self.YawOffset,
-                                    self.PitchOffset,
-                                    self.RollOffset,
-                                    self.NorthOffset,
-                                    self.EastOffset,
-                                    self.DownOffset)
-
-
+                                 self.PitchOffset,
+                                 self.RollOffset,
+                                 self.NorthOffset,
+                                 self.EastOffset,
+                                 self.DownOffset)
 
     # searches for target if cannot find it
     # def SearchForTarget(self, target, repositioning=False, distancethreshold=300):
-
 
     # ending vehicle connection and AI processing after mission completion or a major fucky wucky
     def Terminate(self):
@@ -283,6 +288,7 @@ class MovementCommander:
         print("Killing board. Wait 1...")
         time.sleep(1)
 
+
 # dedicated class to driving a specific thruster
 # has own PID, thruster, speed
 class ThrusterDriver:
@@ -297,7 +303,6 @@ class ThrusterDriver:
             speed = -MAX_THROTTLE
         self.speed = MapToPWM(speed)
 
-
     #  sets speed of thruster and incorporates the addition of pwm variables
     def SetSpeedPID(self, speed, rollpid=0.0, pitchpid=0.0, yawpid=0.0):
         self.speed = float(float(speed) + float(rollpid) + float(pitchpid) + float(yawpid))
@@ -310,6 +315,7 @@ class ThrusterDriver:
     # returns speed
     def GetSpeed(self):
         return self.speed
+
 
 def MapToPWM(x):
     in_min = -100.0
