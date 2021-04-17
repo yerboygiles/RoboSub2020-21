@@ -21,13 +21,22 @@ MissionAlive = True
 
 print("Button pushed... Starting up...")
 time.sleep(3)
-for i in range(2):
+for i in range(3):
     GPIO.output(23, GPIO.HIGH)
     time.sleep(0.05)
     GPIO.output(23, GPIO.LOW)
     time.sleep(0.01)
+
+for i in range(30):  # change this number for how many seconds you'll need to put it in the water/test
+    GPIO.output(23, GPIO.HIGH)
+    time.sleep(0.05)
+    GPIO.output(23, GPIO.LOW)
+    time.sleep(0.01)
+    time.sleep(1)
 print("Running mission...")
 Mission.run()
 print("Mission complete...")
 print("Cleaning up...")
 GPIO.cleanup()
+
+
