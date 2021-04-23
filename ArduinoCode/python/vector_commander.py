@@ -26,13 +26,17 @@ GENERAL_THROTTLE = 17.5
 class MovementCommander:
 
     # initialize everything to supposed starting position
-    def __init__(self, usingvision=False, usinggyro=False, usingsim=False):
+    def __init__(self, usingvision=False, usinggyro=False, usingsim=False, resetheadingoncmd=False):
         # setting up board serial port
-        print("Communicating with Arduino...")
+        print("Communicating with Arduino and it's peripherals...")
         self.UsingGyro = usinggyro
+        self.serial = serial.Serial('/dev/ttyAMA0', 115200)
         if self.UsingGyro:
-            self.Gyro = bno055_data.Sensor9Axis()
+            self.Gyro = bno055_data.Sensor9Axis(self.serial)
             # self.GyroMerger = gyro_data_merger.GyroMerger(self.Gyro)
+        if resetheadingoncmd:
+            self.YawOffset = self.Gyro.StartingGyro[0]
+            self.ResetHeadingOnCMD = resetheadingoncmd
         self.YawOffset = 0
         self.PitchOffset = 0
         self.RollOffset = 0
@@ -118,19 +122,27 @@ class MovementCommander:
 
     def BasicVectoring(self, supplemental):
         i = 0
+        print("Supplemental: ", supplemental)
         for SuppParse in str(supplemental).split(':'):
+            print("SuppParse: ", SuppParse)
             if i == 0:
                 self.YawOffset = float(SuppParse)
+                print("YawOffset: ", self.YawOffset)
             if i == 1:
                 self.PitchOffset = float(SuppParse)
             if i == 2:
                 self.RollOffset = float(SuppParse)
             if i > 2:
                 break
-        while self.CheckIfGyroDone():
-            self.Gyro.UpdateGyro()
-            self.Gyro.UpdatePosition()
-            self.UpdateThrusters()
+        if self.MainCommand == self.ADVANCED_MOVEMENT_COMMANDS[3]:
+            while self.CheckIfPositionDone():
+                self.Gyro.UpdateGyro()
+                self.Gyro.UpdatePosition()
+                self.UpdateThrusters()
+        else:
+            while self.CheckIfGyroDone():
+                self.Gyro.UpdateGyro()
+                self.UpdateThrusters()
 
     def AdvancedVectoring(self):
         pass
@@ -159,41 +171,66 @@ class MovementCommander:
         # going through commands in parsed list
         self.CommandIndex = 0
         for command in commandlist:
+            print("VectorCommander running: ", command)
+            self.MainCommand = ""
+            self.SuppCommand = ""
+            j = 0
+            for commandParsed in str(command).split(','):
+                if j == 0:
+                    self.MainCommand = commandParsed
+                if j == 1:
+                    self.SuppCommand = commandParsed
+                j = j + 1
+            print("Main: ", self.MainCommand, ", Supplementary: ", self.SuppCommand)
             for advancedcommand in self.ADVANCED_MOVEMENT_COMMANDS:
                 i = 0
-                if command == advancedcommand:
-                    self.BasicVectoring(commandlist[i + 1])
+                if self.MainCommand == advancedcommand:
+                    self.InitialTime = time.perf_counter()
+                    self.BasicVectoring(self.SuppCommand)
                 i += 2
             self.CommandIndex += 1
 
-    def CheckIfGyroDone(self, threshold=3, timethreshold=5):
-        self.PowerBR = -10
-        self.PowerBL = -10
-        self.PitchOffset = 0
-        if (abs(self.Gyro.getYaw() - self.YawOffset) < threshold) and (
-                abs(self.Gyro.getPitch() - self.PitchOffset) < threshold) and (
-                abs(self.Gyro.getRoll() - self.RollOffset) < threshold):
+    def CheckIfGyroDone(self, threshold=15, timethreshold=5):
+        # if(self.Gyro.getYaw() < 0):
+        self.GyroRunning = True
+        if (abs(self.Gyro.getYaw() - abs(self.YawOffset)) < threshold) and (
+                abs(self.Gyro.getPitch() - abs(self.PitchOffset)) < threshold) and (
+                abs(self.Gyro.getRoll() - abs(self.RollOffset)) < threshold):
             self.ElapsedTime = time.perf_counter() - self.InitialTime
             print("Within gyro threshold. Waiting ", timethreshold, "...")
             if self.ElapsedTime >= timethreshold:
                 self.GyroRunning = False
         else:
+            print("Trying to move to ", self.YawOffset, self.PitchOffset, self.RollOffset, ", currently at ",
+                  self.Gyro.getYaw(), self.Gyro.getPitch(), self.Gyro.getRoll())
             self.InitialTime = time.perf_counter()
         return self.GyroRunning
 
-    def SendToArduino(self):
+    def SendToArduino(self, whattosend):
+        self.serial.write(whattosend.encode('utf-8'))
+
+    def SendMotorValues(self):
         outdata = ""
         outdata += str(self.ThrusterLB.GetSpeed())
+        outdata += ":"
         outdata += str(self.ThrusterLF.GetSpeed())
+        outdata += ":"
         outdata += str(self.ThrusterRB.GetSpeed())
+        outdata += ":"
         outdata += str(self.ThrusterRF.GetSpeed())
+        outdata += ":"
         outdata += str(self.ThrusterBL.GetSpeed())
+        outdata += ":"
         outdata += str(self.ThrusterBR.GetSpeed())
+        outdata += ":"
         outdata += str(self.ThrusterFL.GetSpeed())
+        outdata += ":"
         outdata += str(self.ThrusterFR.GetSpeed())
         outdata += "\n"
+        self.serial.write(outdata.encode('utf-8'))
 
     def CheckIfPositionDone(self, threshold=3, timethreshold=5):
+        self.PositionRunning = True
         if (abs(self.Gyro.getNorth() - self.NorthOffset) < threshold) and (
                 abs(self.Gyro.getEast() - self.EastOffset) < threshold) and (
                 abs(self.Gyro.getDown() - self.DownOffset) < threshold):
@@ -214,23 +251,24 @@ class MovementCommander:
                                  self.EastOffset,
                                  self.DownOffset)
         self.Gyro.PID()
-        self.ThrusterLB.SetSpeedPID(self.PowerLB, yawpid=self.Gyro.getYawPID())
-        self.ThrusterLF.SetSpeedPID(self.PowerLF, yawpid=self.Gyro.getYawPID())
-        self.ThrusterRB.SetSpeedPID(self.PowerRB, yawpid=-self.Gyro.getYawPID())
-        self.ThrusterRF.SetSpeedPID(self.PowerRF, yawpid=-self.Gyro.getYawPID())
+        self.ThrusterBL.SetSpeedPID(self.PowerLB, yawpid=self.Gyro.getYawPID())
+        self.ThrusterFL.SetSpeedPID(self.PowerLF, yawpid=self.Gyro.getYawPID())
+        self.ThrusterBR.SetSpeedPID(self.PowerRB, yawpid=-self.Gyro.getYawPID())
+        self.ThrusterFR.SetSpeedPID(self.PowerRF, yawpid=-self.Gyro.getYawPID())
 
-        self.ThrusterBL.SetSpeedPID(self.PowerBL,
+        self.ThrusterLB.SetSpeedPID(self.PowerBL,
                                     rollpid=self.Gyro.getRollPID(),
                                     pitchpid=-self.Gyro.getPitchPID())
-        self.ThrusterBR.SetSpeedPID(self.PowerBR,
+        self.ThrusterRB.SetSpeedPID(self.PowerBR,
                                     rollpid=-self.Gyro.getRollPID(),
                                     pitchpid=-self.Gyro.getPitchPID())
-        self.ThrusterFL.SetSpeedPID(self.PowerFL,
+        self.ThrusterLF.SetSpeedPID(self.PowerFL,
                                     rollpid=-self.Gyro.getRollPID(),
                                     pitchpid=-self.Gyro.getPitchPID())
-        self.ThrusterFR.SetSpeedPID(self.PowerFR,
+        self.ThrusterRF.SetSpeedPID(self.PowerFR,
                                     rollpid=self.Gyro.getRollPID(),
                                     pitchpid=-self.Gyro.getPitchPID())
+        self.SendMotorValues()
 
     def BrakeAllThrusters(self):
         # horizontal
@@ -280,6 +318,8 @@ class MovementCommander:
         self.ThrusterBR.SetSpeed(0)
         self.ThrusterFR.SetSpeed(0)
         self.ThrusterFL.SetSpeed(0)
+        # self.UpdateThrusters()
+        self.SendToArduino("STOP")
         time.sleep(1)
         if self.UsingVision:
             print("Killing Vision. Wait 1...")

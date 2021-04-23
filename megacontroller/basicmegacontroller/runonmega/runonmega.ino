@@ -55,17 +55,19 @@ Servo BRthruster;
 Servo FLthruster;
 Servo FRthruster;
 
+bool thrustersValid;
+bool secondSet;
 int thrusterpower[8];
 
 char *strings[8];
 
 char *ptr = NULL;
+byte index;
   
 char input[40];
 
 String strinput;
 
-byte index;
 
 #define arr_len( x )  ( sizeof( x ) / sizeof( *x ) )
 
@@ -104,9 +106,30 @@ void setup() {
   BRthruster.writeMicroseconds(1500);
   FLthruster.writeMicroseconds(1500);
   FRthruster.writeMicroseconds(1500);
-  
   delay(7000); // delay to allow the ESC to recognize the stopped signal.
   Serial1.begin(115200);
+  Serial.begin(115200);
+  
+  LBthruster.writeMicroseconds(1600); // send "slow" signal to ESC. Also necessary to arm the ESC.
+  LFthruster.writeMicroseconds(1600);
+  RBthruster.writeMicroseconds(1600);
+  RFthruster.writeMicroseconds(1600);
+  BLthruster.writeMicroseconds(1600);
+  BRthruster.writeMicroseconds(1600);
+  FLthruster.writeMicroseconds(1600);
+  FRthruster.writeMicroseconds(1600);
+  delay(1000);
+  
+  LBthruster.writeMicroseconds(1500); // send "stop" signal to ESC. Also necessary to arm the ESC.
+  LFthruster.writeMicroseconds(1500);
+  RBthruster.writeMicroseconds(1500);
+  RFthruster.writeMicroseconds(1500);
+  BLthruster.writeMicroseconds(1500);
+  BRthruster.writeMicroseconds(1500);
+  FLthruster.writeMicroseconds(1500);
+  FRthruster.writeMicroseconds(1500);
+  
+  
   Serial1.println("Thrusters armed.");
   Serial1.println("Orientation Sensor Test"); Serial1.println("");
   /* Initialise the sensor */
@@ -124,6 +147,7 @@ void setup() {
    
   /* Display some basic information on this sensor */
   displaySensorDetails();
+  secondSet = false;
 }
 
 void loop() {
@@ -139,38 +163,7 @@ void loop() {
   zPos = zPos + ACCEL_POS_TRANSITION * linearAccelData.acceleration.z;
   
   headingVel = ACCEL_VEL_TRANSITION * linearAccelData.acceleration.x / cos(DEG_2_RAD * orientationData.orientation.x);
-
-  if(Serial1.available()){
-    byte index = 0;
-    strinput = Serial1.readString();
-    strinput.toCharArray(input, 40);
-    Serial1.print("Input string = ");
-    Serial1.println(input);
-    ptr = strtok(input, ":");  // takes a list of delimiters
-    if((strinput.compareTo("STOP")==10)) {
-      Serial1.println("Stopping.");
-      for(int i=0; i < arr_len(thrusterpower); i++){
-        thrusterpower[i] = 1500;
-      }
-    }
-    else{
-    while(ptr != NULL)
-      {
-          strings[index] = ptr;
-          thrusterpower[index] = atoi((char *)strings[index]);
-          index++;
-          ptr = strtok(NULL, ":");  // takes a list of delimiters
-      }
-    }
-  }
-  LBthruster.writeMicroseconds(thrusterpower[0]); // send "stop" signal to ESC. Also necessary to arm the ESC.
-  LFthruster.writeMicroseconds(thrusterpower[1]);
-  RBthruster.writeMicroseconds(thrusterpower[2]);
-  RFthruster.writeMicroseconds(thrusterpower[3]);
-  BLthruster.writeMicroseconds(thrusterpower[4]);
-  BRthruster.writeMicroseconds(thrusterpower[5]);
-  FLthruster.writeMicroseconds(thrusterpower[6]);
-  FRthruster.writeMicroseconds(thrusterpower[7]);
+  thrustersValid = true;
   
   if (printCount * BNO055_SAMPLERATE_DELAY_MS >= PRINT_DELAY_MS) {
     Serial1.print("Orientation:");
@@ -192,6 +185,54 @@ void loop() {
   else {
     printCount = printCount + 1;
   }
-
+  if(Serial1.available() > 0){ 
+     
+    strinput = Serial1.readStringUntil('\n');
+    strinput.toCharArray(input, 40);
+    if((strinput.compareTo("STOP")==0)) {
+      Serial.println("Stopping.");
+      for(int i=0; i < arr_len(thrusterpower); i++){
+        thrusterpower[i] = 0;
+      }
+    }
+    
+    ptr = strtok(input, ":");  // takes a list of delimiters
+    while(ptr != NULL)
+      {
+          strings[index] = ptr;
+          thrusterpower[index] = atoi((char *)strings[index]);
+          if((thrusterpower[index] < 1100) || (thrusterpower[index] > 1900)){
+            
+          }
+          index++;
+          ptr = strtok(NULL, ":");  // takes a list of delimiters
+      }
+    secondSet = !secondSet;
+    Serial.print("LB: ");
+    Serial.print(thrusterpower[0]);
+    Serial.print("LF: ");
+    Serial.print(thrusterpower[1]);
+    Serial.print("RB: ");
+    Serial.print(thrusterpower[2]);
+    Serial.print("RF: ");
+    Serial.print(thrusterpower[3]);
+    Serial.print("BL: ");
+    Serial.print(thrusterpower[4]);
+    Serial.print("BR: ");
+    Serial.print(thrusterpower[5]);
+    Serial.print("FL: ");
+    Serial.print(thrusterpower[6]);
+    Serial.print("FR: ");
+    Serial.print(thrusterpower[7]);
+    Serial.println("");
+    LBthruster.writeMicroseconds(thrusterpower[0]); // send "stop" signal to ESC. Also necessary to arm the ESC.
+    LFthruster.writeMicroseconds(thrusterpower[1]);
+    RBthruster.writeMicroseconds(thrusterpower[2]);
+    RFthruster.writeMicroseconds(thrusterpower[3]);
+    BLthruster.writeMicroseconds(thrusterpower[4]);
+    BRthruster.writeMicroseconds(thrusterpower[5]);
+    FLthruster.writeMicroseconds(thrusterpower[6]);
+    FRthruster.writeMicroseconds(thrusterpower[7]);
+  }
 
 }

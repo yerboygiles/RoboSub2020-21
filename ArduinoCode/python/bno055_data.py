@@ -8,6 +8,7 @@
 
 import serial
 import time
+import re
 import math
 
 # sitl is basically a simulation, can be "ran" from any computer kinda? I will figure out a way to make an incorporated
@@ -79,15 +80,15 @@ class Sensor9Axis:
     Roll_I = 0.0
     Roll_D = 0.0
 
-    def __init__(self):
+    def __init__(self, serial):
 
         # read info from vehicle
-        self.serial = serial.Serial('/dev/ttyAMA0', 115200)
+        self.serial = serial
         self.serial.flushInput()
 
         # arm vehicle to see position
         print('Gyro Armed')
-
+        print(self.serial.readline())
         # - Read the actual attitude: Roll, Pitch, and Yaw
         self.UpdateGyro()
         self.StartingGyro = self.Gyro
@@ -104,37 +105,47 @@ class Sensor9Axis:
     # parse gyro object data from pixhawk, can then pass to other programs
     def UpdateGyro(self):
         i = 0
-        for ColonParse in str(self.serial.readline()).split(':'):
+        # print("Updating...")
+        for ColonParse in str(self.serial.readline()).strip("'").split(':'):
             if ColonParse is not None:
+                ColonParse = re.findall(r"[-+]?\d*\.\d+|\d+", ColonParse)
+                # print("ColonParse: ", ColonParse, i)
                 if i == 0:
                     if ColonParse == "Position":
                         break
                 if i == 1:
-                    self.Gyro[YAW] = float(ColonParse)
+                    self.Gyro[YAW] = float(ColonParse[0])
                 if i == 2:
-                    self.Gyro[PITCH] = float(ColonParse)
+                    self.Gyro[PITCH] = float(ColonParse[0])
                 if i == 3:
-                    self.Gyro[ROLL] = float(ColonParse)
+                    self.Gyro[ROLL] = float(ColonParse[0].strip("\\"))
                 if i > 3:
                     break
-        print("Gyro: ", self.Gyro)
+            i = i + 1
+        # print("Gyro: ", self.Gyro)
 
     # parse position object data from pixhawk, can then pass to other programs
     def UpdatePosition(self):
         i = 0
-        for ColonParse in str(self.serial.readline()).split(':'):
+        for ColonParse in str(self.serial.readline()).strip("'").split(':'):
             if ColonParse is not None:
+                ColonParse = re.findall(r"[-+]?\d*\.\d+|\d+", ColonParse)
                 if i == 0:
                     if ColonParse == "Orientation":
                         break
                 if i == 1:
-                    self.Position[YAW] = float(ColonParse)
+                    self.Position[YAW] = float(ColonParse[0])
                 if i == 2:
-                    self.Position[PITCH] = float(ColonParse)
+                    self.Position[PITCH] = float(ColonParse[0])
                 if i == 3:
-                    self.Position[ROLL] = float(ColonParse)
+                    self.Position[ROLL] = float(ColonParse[0].strip("\\"))
                 if i > 3:
                     break
+            i = i + 1
+
+    def WriteToSerial(self, toprint):
+        self.serial.writelines(toprint)
+
     # position read when starting the RoboSub
     def getStartingPosition(self):
         return self.StartingPosition
@@ -274,4 +285,5 @@ class Sensor9Axis:
 
     # end command/vehicle running
     def Terminate(self):
+        self.serial.write("STOP")
         self.serial.close()
