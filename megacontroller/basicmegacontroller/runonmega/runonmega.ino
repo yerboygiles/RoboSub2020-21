@@ -113,14 +113,14 @@ void setup() {
   FRthruster.writeMicroseconds(1500);
   delay(7000); // delay to allow the ESC to recognize the stopped signal.
   Serial1.println("Thrusters armed, resetting to stop.");
-  LBthruster.writeMicroseconds(0); // send "stop"/voltage off signal to ESC.
-  LFthruster.writeMicroseconds(0);
-  RBthruster.writeMicroseconds(0);
-  RFthruster.writeMicroseconds(0);
-  BLthruster.writeMicroseconds(0);
-  BRthruster.writeMicroseconds(0);
-  FLthruster.writeMicroseconds(0);
-  FRthruster.writeMicroseconds(0);
+//  LBthruster.writeMicroseconds(0); // send "stop"/voltage off signal to ESC.
+//  LFthruster.writeMicroseconds(0);
+//  RBthruster.writeMicroseconds(0);
+//  RFthruster.writeMicroseconds(0);
+//  BLthruster.writeMicroseconds(0);
+//  BRthruster.writeMicroseconds(0);
+//  FLthruster.writeMicroseconds(0);
+//  FRthruster.writeMicroseconds(0);
   Serial.println("Orientation Sensor Test."); Serial.println("");
   /* Initialise the sensor */
   if(!bno.begin())
@@ -168,23 +168,23 @@ void loop() {
   
   headingVel = ACCEL_VEL_TRANSITION * linearAccelData.acceleration.x / cos(DEG_2_RAD * orientationData.orientation.x);
   thrustersValid = true;
-//  Serial.print("LB: ");
-//  Serial.print(thrusterpower[0]);
-//  Serial.print("LF: ");
-//  Serial.print(thrusterpower[1]);
-//  Serial.print("RB: ");
-//  Serial.print(thrusterpower[2]);
-//  Serial.print("RF: ");
-//  Serial.print(thrusterpower[3]);
-//  Serial.print("BL: ");
-//  Serial.print(thrusterpower[4]);
-//  Serial.print("BR: ");
-//  Serial.print(thrusterpower[5]);
-//  Serial.print("FL: ");
-//  Serial.print(thrusterpower[6]);
-//  Serial.print("FR: ");
-//  Serial.print(thrusterpower[7]);
-//  Serial.println("");
+  Serial.print("LB: ");
+  Serial.print(thrusterpower[0]);
+  Serial.print("LF: ");
+  Serial.print(thrusterpower[1]);
+  Serial.print("RB: ");
+  Serial.print(thrusterpower[2]);
+  Serial.print("RF: ");
+  Serial.print(thrusterpower[3]);
+  Serial.print("BL: ");
+  Serial.print(thrusterpower[4]);
+  Serial.print("BR: ");
+  Serial.print(thrusterpower[5]);
+  Serial.print("FL: ");
+  Serial.print(thrusterpower[6]);
+  Serial.print("FR: ");
+  Serial.print(thrusterpower[7]);
+  Serial.println("");
   printEvent(&orientationData, Serial);
   //printEvent(&linearAccelData, Serial);
   //displayCalStatus();
@@ -276,29 +276,12 @@ void loop() {
     secondSet = !secondSet;
     }
     // This is the testing shit, sends over USB instead of rxtx wire
-//    Serial.print("LB: ");
-//    Serial.print(thrusterpower[0]);
-//    Serial.print("LF: ");
-//    Serial.print(thrusterpower[1]);
-//    Serial.print("RB: ");
-//    Serial.print(thrusterpower[2]);
-//    Serial.print("RF: ");
-//    Serial.print(thrusterpower[3]);
-//    Serial.print("BL: ");
-//    Serial.print(thrusterpower[4]);
-//    Serial.print("BR: ");
-//    Serial.print(thrusterpower[5]);
-//    Serial.print("FL: ");
-//    Serial.print(thrusterpower[6]);
-//    Serial.print("FR: ");
-//    Serial.print(thrusterpower[7]);
-//    Serial.println("");
     if(!stopped){
       writeMotors();
     }
     
     printEvent(&orientationData, Serial1);
-    printEvent(&linearAccelData, Serial1);
+//    printEvent(&linearAccelData, Serial1);
     
 //    Serial1.print("Orientation:");
 //    Serial1.print(orientationData.orientation.x);
@@ -329,7 +312,6 @@ void printEvent(sensors_event_t* event, Stream &serial) {
       serial.print((x - 180));
     } else if (x <= 180) {
       serial.print(-(x + 180));
-      
     }
     serial.print(":y:");
     serial.print(y - yOffset);
@@ -341,6 +323,12 @@ void printEvent(sensors_event_t* event, Stream &serial) {
     x = event->acceleration.x;
     y = event->acceleration.y;
     z = event->acceleration.z;
+    serial.print(":x:");
+    serial.print(x + 180);
+    serial.print(":y:");
+    serial.print(y - yOffset);
+    serial.print(":z:");
+    serial.println(z - zOffset);
   }
   else {
     serial.print("Unk:");

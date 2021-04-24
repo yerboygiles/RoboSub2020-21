@@ -113,14 +113,13 @@ class Sensor9Axis:
         for ColonParse in line:
             if ColonParse is not None:
                 ColonParse = re.findall(r"[-+]?\d*\.\d+|\d+", ColonParse)
-                if ColonParse == "Linear":
-                    break
-                if ColonParse == "x":
-                    self.Gyro[YAW] = float(line[i+1])
-                if ColonParse == "y":
-                    self.Gyro[PITCH] = float(line[i+1])
-                if ColonParse == "z":
-                    self.Gyro[ROLL] = float(line[i+1])
+                # print("ColonParse: ", ColonParse, i)
+                if i == 2:
+                    self.Gyro[YAW] = float(ColonParse[0])
+                if i == 4:
+                    self.Gyro[PITCH] = float(ColonParse[0])
+                if i == 6:
+                    self.Gyro[ROLL] = float(ColonParse[0])
                     break
             i = i + 1
         # print("Gyro: ", self.Gyro)
@@ -134,12 +133,12 @@ class Sensor9Axis:
                 ColonParse = re.findall(r"[-+]?\d*\.\d+|\d+", ColonParse)
                 if ColonParse == "Orient":
                     break
-                if ColonParse == "x":
-                    self.Position[NORTH] = float(line[i+1])
-                if ColonParse == "y":
-                    self.Position[EAST] = float(line[i+1])
-                if ColonParse == "z":
-                    self.Position[DOWN] = float(line[i+1])
+                if i == 2:
+                    self.Position[NORTH] = float(ColonParse[0])
+                if i == 4:
+                    self.Position[EAST] = float(ColonParse[0])
+                if i == 6:
+                    self.Position[DOWN] = float(ColonParse[0])
                     break
             i = i + 1
 

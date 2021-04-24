@@ -122,6 +122,7 @@ class MovementCommander:
         print("MovementCommander initialized...")
 
     def BasicVectoring(self, supplemental):
+        Vectoring = True
         i = 0
         print("Supplemental: ", supplemental)
         for SuppParse in str(supplemental).split(':'):
@@ -135,14 +136,12 @@ class MovementCommander:
                 self.RollOffset = float(SuppParse)
             if i > 2:
                 break
-        if self.MainCommand == self.ADVANCED_MOVEMENT_COMMANDS[3]:
-            while self.CheckIfPositionDone():
-                self.UpdateGyro()
-                self.UpdateThrusters()
-        else:
-            while self.CheckIfGyroDone():
-                self.UpdateGyro()
-                self.UpdateThrusters()
+            i = i + 1
+        while Vectoring:
+            self.CheckIfGyroDone(threshold=10, timethreshold=10)
+            Vectoring = self.GyroRunning
+            self.UpdateGyro()
+            self.UpdateThrusters()
 
     def AdvancedVectoring(self):
         pass
@@ -197,6 +196,7 @@ class MovementCommander:
     def CheckIfGyroDone(self, threshold=15, timethreshold=5):
         # if(self.Gyro.getYaw() < 0):
         self.GyroRunning = True
+        integer = 0
         if (abs(self.Gyro.getYaw() - abs(self.YawOffset)) < threshold) and (
                 abs(self.Gyro.getPitch() - abs(self.PitchOffset)) < threshold) and (
                 abs(self.Gyro.getRoll() - abs(self.RollOffset)) < threshold):
@@ -205,10 +205,12 @@ class MovementCommander:
             if self.ElapsedTime >= timethreshold:
                 self.GyroRunning = False
         else:
-            print("Trying to move to ", self.YawOffset, self.PitchOffset, self.RollOffset, ", currently at ",
-                  self.Gyro.getYaw(), self.Gyro.getPitch(), self.Gyro.getRoll())
+            print("Gyro:", self.Gyro.getGyro())
+            # print("Trying to move to ", self.YawOffset, self.PitchOffset, self.RollOffset, ", currently at ",
+            #       self.Gyro.getYaw(), self.Gyro.getPitch(), self.Gyro.getRoll())
+            integer = integer + 1
+            # print("What?", integer)
             self.InitialTime = time.perf_counter()
-        return self.GyroRunning
 
     def SendToArduino(self, whattosend):
         self.serial.write(whattosend.encode('utf-8'))
@@ -251,6 +253,9 @@ class MovementCommander:
             self.InitialTime = time.perf_counter()
         return self.PositionRunning
 
+    def CalculatePID(self):
+        pass
+
     def UpdateThrusters(self):
         self.ThrusterBL.SetSpeedPID(self.PowerLB, yawpid=self.Gyro.getYawPID())
         self.ThrusterFL.SetSpeedPID(self.PowerLF, yawpid=self.Gyro.getYawPID())
@@ -272,9 +277,9 @@ class MovementCommander:
 
     def UpdateGyro(self):
         self.Gyro.UpdateGyro()
-        print(self.Gyro.getGyro())
-        self.Gyro.UpdatePosition()
-        print(self.Gyro.getPosition())
+        # print(self.Gyro.getGyro())
+        # self.Gyro.UpdatePosition()
+        # print(self.Gyro.getPosition())
         self.Gyro.CalculateError(self.YawOffset,
                                  self.PitchOffset,
                                  self.RollOffset,
@@ -296,27 +301,6 @@ class MovementCommander:
         self.PowerFL = 0
 
         self.UpdateThrusters()
-
-    # self.ADVANCED_MOVEMENT_COMMANDS = [
-    #     "LOG START POINT",
-    #     "RETURN TO START",
-    # ]
-
-    # self.TARGET_MOVEMENT_COMMANDS = [
-    #     "MOVE TO TARGET",
-    #     "RAM TARGET",
-    #     "FIRE AT TARGET"
-    # ]
-
-    def VectorMovement(self, designatedcoords):
-        # deltaVals = [designatedcoords[dimension] - self.Gyro[dimension] for dimension in range(len(point1))]
-        self.Gyro.UpdateGyro()
-        self.Gyro.CalculateError(self.YawOffset,
-                                 self.PitchOffset,
-                                 self.RollOffset,
-                                 self.NorthOffset,
-                                 self.EastOffset,
-                                 self.DownOffset)
 
     # searches for target if cannot find it
     # def SearchForTarget(self, target, repositioning=False, distancethreshold=300):
