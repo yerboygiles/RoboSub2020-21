@@ -26,8 +26,11 @@
 */
 
 double xPos = 0, yPos = 0, zPos = 0, headingVel = 0;
+double xOffset, yOffset, zOffset;
 
-uint16_t BNO055_SAMPLERATE_DELAY_MS = 10; //how often to read data from the board
+int SystemCalib, GyroCalib, AccelCalib = 0;
+
+uint16_t BNO055_SAMPLERATE_DELAY_MS = 100; //how often to read data from the board
 uint16_t PRINT_DELAY_MS = 500; // how often to print the data
 uint16_t printCount = 0; //counter to avoid printing every 10MS sample
 
@@ -57,12 +60,14 @@ Servo FRthruster;
 
 bool thrustersValid;
 bool secondSet;
+bool stopped = true;
 int thrusterpower[8];
 
 char *strings[8];
 
 char *ptr = NULL;
 byte index;
+byte indexed;
   
 char input[40];
 
@@ -71,23 +76,23 @@ String strinput;
 
 #define arr_len( x )  ( sizeof( x ) / sizeof( *x ) )
 
-void displaySensorDetails(void)
-{
+void displaySensorDetails(void) {
   sensor_t sensor;
   bno.getSensor(&sensor);
-  Serial1.println("------------------------------------");
-  Serial1.print  ("Sensor:       "); Serial1.println(sensor.name);
-  Serial1.print  ("Driver Ver:   "); Serial1.println(sensor.version);
-  Serial1.print  ("Unique ID:    "); Serial1.println(sensor.sensor_id);
-  Serial1.print  ("Max Value:    "); Serial1.print(sensor.max_value); Serial1.println(" xxx");
-  Serial1.print  ("Min Value:    "); Serial1.print(sensor.min_value); Serial1.println(" xxx");
-  Serial1.print  ("Resolution:   "); Serial1.print(sensor.resolution); Serial1.println(" xxx");
-  Serial1.println("------------------------------------");
-  Serial1.println("");
+  Serial.println("------------------------------------");
+  Serial.print  ("Sensor:       "); Serial.println(sensor.name);
+  Serial.print  ("Driver Ver:   "); Serial.println(sensor.version);
+  Serial.print  ("Unique ID:    "); Serial.println(sensor.sensor_id);
+  Serial.print  ("Max Value:    "); Serial.print(sensor.max_value); Serial.println(" xxx");
+  Serial.print  ("Min Value:    "); Serial.print(sensor.min_value); Serial.println(" xxx");
+  Serial.print  ("Resolution:   "); Serial.print(sensor.resolution); Serial.println(" xxx");
+  Serial.println("------------------------------------");
+  Serial.println("");
   delay(500);
 }
-
 void setup() {
+  Serial1.begin(115200);
+  Serial.begin(115200);
   // put your setup code here, to run once:
   LBthruster.attach(2);
   LFthruster.attach(3);
@@ -98,7 +103,7 @@ void setup() {
   FLthruster.attach(8);
   FRthruster.attach(9);
 
-  LBthruster.writeMicroseconds(1500); // send "stop" signal to ESC. Also necessary to arm the ESC.
+  LBthruster.writeMicroseconds(1500); // send "arm" signal to ESC. Also necessary to arm the ESC.
   LFthruster.writeMicroseconds(1500);
   RBthruster.writeMicroseconds(1500);
   RFthruster.writeMicroseconds(1500);
@@ -107,31 +112,16 @@ void setup() {
   FLthruster.writeMicroseconds(1500);
   FRthruster.writeMicroseconds(1500);
   delay(7000); // delay to allow the ESC to recognize the stopped signal.
-  Serial1.begin(115200);
-  Serial.begin(115200);
-  
-  LBthruster.writeMicroseconds(1600); // send "slow" signal to ESC. Also necessary to arm the ESC.
-  LFthruster.writeMicroseconds(1600);
-  RBthruster.writeMicroseconds(1600);
-  RFthruster.writeMicroseconds(1600);
-  BLthruster.writeMicroseconds(1600);
-  BRthruster.writeMicroseconds(1600);
-  FLthruster.writeMicroseconds(1600);
-  FRthruster.writeMicroseconds(1600);
-  delay(1000);
-  
-  LBthruster.writeMicroseconds(1500); // send "stop" signal to ESC. Also necessary to arm the ESC.
-  LFthruster.writeMicroseconds(1500);
-  RBthruster.writeMicroseconds(1500);
-  RFthruster.writeMicroseconds(1500);
-  BLthruster.writeMicroseconds(1500);
-  BRthruster.writeMicroseconds(1500);
-  FLthruster.writeMicroseconds(1500);
-  FRthruster.writeMicroseconds(1500);
-  
-  
-  Serial1.println("Thrusters armed.");
-  Serial1.println("Orientation Sensor Test"); Serial1.println("");
+  Serial1.println("Thrusters armed, resetting to stop.");
+  LBthruster.writeMicroseconds(0); // send "stop"/voltage off signal to ESC.
+  LFthruster.writeMicroseconds(0);
+  RBthruster.writeMicroseconds(0);
+  RFthruster.writeMicroseconds(0);
+  BLthruster.writeMicroseconds(0);
+  BRthruster.writeMicroseconds(0);
+  FLthruster.writeMicroseconds(0);
+  FRthruster.writeMicroseconds(0);
+  Serial.println("Orientation Sensor Test."); Serial.println("");
   /* Initialise the sensor */
   if(!bno.begin())
   {
@@ -140,22 +130,36 @@ void setup() {
     while(1);
   }
   
-  delay(1000);
-
+  Serial.println("Calibration post start:");
+  displayCalStatus();
+  
   /* Use external crystal for better accuracy */
   bno.setExtCrystalUse(true);
    
   /* Display some basic information on this sensor */
   displaySensorDetails();
   secondSet = false;
+  
+
+}
+
+void writeMotors(void) {
+  LBthruster.writeMicroseconds(thrusterpower[0]); // sending driving values to arduino
+  LFthruster.writeMicroseconds(thrusterpower[1]);
+  RBthruster.writeMicroseconds(thrusterpower[2]);
+  RFthruster.writeMicroseconds(thrusterpower[3]);
+  BLthruster.writeMicroseconds(thrusterpower[4]);
+  BRthruster.writeMicroseconds(thrusterpower[5]);
+  FLthruster.writeMicroseconds(thrusterpower[6]);
+  FRthruster.writeMicroseconds(thrusterpower[7]);
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
   
-  sensors_event_t orientationData , linearAccelData;
+  sensors_event_t orientationData , angVelData , linearAccelData;
   bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
-  //  bno.getEvent(&angVelData, Adafruit_BNO055::VECTOR_GYROSCOPE);
+  bno.getEvent(&angVelData, Adafruit_BNO055::VECTOR_GYROSCOPE);
   bno.getEvent(&linearAccelData, Adafruit_BNO055::VECTOR_LINEARACCEL);
 
   xPos = xPos + ACCEL_POS_TRANSITION * linearAccelData.acceleration.x;
@@ -164,40 +168,102 @@ void loop() {
   
   headingVel = ACCEL_VEL_TRANSITION * linearAccelData.acceleration.x / cos(DEG_2_RAD * orientationData.orientation.x);
   thrustersValid = true;
+//  Serial.print("LB: ");
+//  Serial.print(thrusterpower[0]);
+//  Serial.print("LF: ");
+//  Serial.print(thrusterpower[1]);
+//  Serial.print("RB: ");
+//  Serial.print(thrusterpower[2]);
+//  Serial.print("RF: ");
+//  Serial.print(thrusterpower[3]);
+//  Serial.print("BL: ");
+//  Serial.print(thrusterpower[4]);
+//  Serial.print("BR: ");
+//  Serial.print(thrusterpower[5]);
+//  Serial.print("FL: ");
+//  Serial.print(thrusterpower[6]);
+//  Serial.print("FR: ");
+//  Serial.print(thrusterpower[7]);
+//  Serial.println("");
+  printEvent(&orientationData, Serial);
+  //printEvent(&linearAccelData, Serial);
+  //displayCalStatus();
   
-  if (printCount * BNO055_SAMPLERATE_DELAY_MS >= PRINT_DELAY_MS) {
-    Serial1.print("Orientation:");
-    Serial1.print(orientationData.orientation.x);
-    Serial1.print(":");
-    Serial1.print(orientationData.orientation.y);
-    Serial1.print(":");
-    Serial1.print(orientationData.orientation.z);
-    Serial1.println("");
-
-//    Serial1.print("Position:");
-//    Serial1.print(xPos);
-//    Serial1.print(":");
-//    Serial1.print(yPos);
-//    Serial1.print(":");
-//    Serial1.print(zPos);
-//    Serial1.println("");
-  }
-  else {
-    printCount = printCount + 1;
+  int j = 0;
+  while(GyroCalib < 3){
+    delay(1000);
+    displayCalStatus();
+    Serial.print("Calibrating... On run: ");
+    Serial.print(j);
+    Serial.println(". Wait 1.");
+    j = j + 1;
+    xOffset = orientationData.orientation.x;
+    yOffset = orientationData.orientation.y;
+    zOffset = orientationData.orientation.z;
+    Serial.println(xOffset);
+    Serial.println(yOffset);
+    Serial.println(zOffset);
   }
   if(Serial1.available() > 0){ 
      
-    strinput = Serial1.readStringUntil('\n');
+    strinput = Serial.readStringUntil('\n');
     strinput.toCharArray(input, 40);
-    if((strinput.compareTo("STOP")==0)) {
-      Serial.println("Stopping.");
-      for(int i=0; i < arr_len(thrusterpower); i++){
-        thrusterpower[i] = 0;
-      }
+//    Serial.print("Stop?: "); 
+//    Serial.println((strinput.compareTo("STOP")));
+//    Serial.print("Start?: "); 
+//    Serial.println((strinput.compareTo("START")));
+    if((strinput.compareTo("INIT")==0)) {
+      Serial.println("Init. Wait 3.");
+      thrusterpower[0] = 0;
+      thrusterpower[1] = 0;
+      thrusterpower[2] = 0;
+      thrusterpower[3] = 0;
+      thrusterpower[4] = 0;
+      thrusterpower[5] = 0;
+      thrusterpower[6] = 0;
+      thrusterpower[7] = 0;
+      writeMotors();
+      printEvent(&orientationData, Serial1);
+//      printEvent(&linearAccelData, Serial1);
+      delay(3000);
     }
-    
+    else if((strinput.compareTo("STOP")==0)) {
+      Serial.println("Thrusters disengaging. Wait 3.");
+      stopped = true;
+      thrusterpower[0] = 0;
+      thrusterpower[1] = 0;
+      thrusterpower[2] = 0;
+      thrusterpower[3] = 0;
+      thrusterpower[4] = 0;
+      thrusterpower[5] = 0;
+      thrusterpower[6] = 0;
+      thrusterpower[7] = 0;
+      writeMotors();
+      delay(3000);
+    }
+    else if((strinput.compareTo("START")==0)) {
+      Serial.println("Thrusters engaging. Wait 3.");
+      stopped = false;
+      thrusterpower[0] = 1500;
+      thrusterpower[1] = 1500;
+      thrusterpower[2] = 1500;
+      thrusterpower[3] = 1500;
+      thrusterpower[4] = 1500;
+      thrusterpower[5] = 1500;
+      thrusterpower[6] = 1500;
+      thrusterpower[7] = 1500;
+      writeMotors();
+      delay(3000);
+    } else if (!stopped){
+      if(secondSet) {
+      index = 3;
+      indexed = 7;
+    } else {
+      index = 0;
+      indexed = 3;
+    }
     ptr = strtok(input, ":");  // takes a list of delimiters
-    while(ptr != NULL)
+    while(index <= indexed)
       {
           strings[index] = ptr;
           thrusterpower[index] = atoi((char *)strings[index]);
@@ -208,31 +274,107 @@ void loop() {
           ptr = strtok(NULL, ":");  // takes a list of delimiters
       }
     secondSet = !secondSet;
-    Serial.print("LB: ");
-    Serial.print(thrusterpower[0]);
-    Serial.print("LF: ");
-    Serial.print(thrusterpower[1]);
-    Serial.print("RB: ");
-    Serial.print(thrusterpower[2]);
-    Serial.print("RF: ");
-    Serial.print(thrusterpower[3]);
-    Serial.print("BL: ");
-    Serial.print(thrusterpower[4]);
-    Serial.print("BR: ");
-    Serial.print(thrusterpower[5]);
-    Serial.print("FL: ");
-    Serial.print(thrusterpower[6]);
-    Serial.print("FR: ");
-    Serial.print(thrusterpower[7]);
-    Serial.println("");
-    LBthruster.writeMicroseconds(thrusterpower[0]); // send "stop" signal to ESC. Also necessary to arm the ESC.
-    LFthruster.writeMicroseconds(thrusterpower[1]);
-    RBthruster.writeMicroseconds(thrusterpower[2]);
-    RFthruster.writeMicroseconds(thrusterpower[3]);
-    BLthruster.writeMicroseconds(thrusterpower[4]);
-    BRthruster.writeMicroseconds(thrusterpower[5]);
-    FLthruster.writeMicroseconds(thrusterpower[6]);
-    FRthruster.writeMicroseconds(thrusterpower[7]);
+    }
+    // This is the testing shit, sends over USB instead of rxtx wire
+//    Serial.print("LB: ");
+//    Serial.print(thrusterpower[0]);
+//    Serial.print("LF: ");
+//    Serial.print(thrusterpower[1]);
+//    Serial.print("RB: ");
+//    Serial.print(thrusterpower[2]);
+//    Serial.print("RF: ");
+//    Serial.print(thrusterpower[3]);
+//    Serial.print("BL: ");
+//    Serial.print(thrusterpower[4]);
+//    Serial.print("BR: ");
+//    Serial.print(thrusterpower[5]);
+//    Serial.print("FL: ");
+//    Serial.print(thrusterpower[6]);
+//    Serial.print("FR: ");
+//    Serial.print(thrusterpower[7]);
+//    Serial.println("");
+    if(!stopped){
+      writeMotors();
+    }
+    
+    printEvent(&orientationData, Serial1);
+    printEvent(&linearAccelData, Serial1);
+    
+//    Serial1.print("Orientation:");
+//    Serial1.print(orientationData.orientation.x);
+//    Serial1.print(":");
+//    Serial1.print(orientationData.orientation.y);
+//    Serial1.print(":");
+//    Serial1.print(orientationData.orientation.z);
+//    Serial1.println("");
+
+//    Serial1.print("Position:");
+//    Serial1.print(xPos);
+//    Serial1.print(":");
+//    Serial1.print(yPos);
+//    Serial1.print(":");
+//    Serial1.print(zPos);
+//    Serial1.println("");
+  }
+}
+void printEvent(sensors_event_t* event, Stream &serial) {
+  double x = -1000000, y = -1000000 , z = -1000000; //dumb values, easy to spot problem
+  if (event->type == SENSOR_TYPE_ORIENTATION) {
+    serial.print("Orient");
+    x = event->orientation.x;
+    y = event->orientation.y;
+    z = event->orientation.z;
+    serial.print(":x:");
+    if(x > 180) {
+      serial.print((x - 180));
+    } else if (x <= 180) {
+      serial.print(-(x + 180));
+      
+    }
+    serial.print(":y:");
+    serial.print(y - yOffset);
+    serial.print(":z:");
+    serial.println(z - zOffset);
+  }
+  else if (event->type == SENSOR_TYPE_LINEAR_ACCELERATION) {
+//    serial.print("Linear");
+    x = event->acceleration.x;
+    y = event->acceleration.y;
+    z = event->acceleration.z;
+  }
+  else {
+    serial.print("Unk:");
   }
 
+  
+}
+
+void displayCalStatus(void)
+{
+  /* Get the four calibration values (0..3) */
+  /* Any sensor data reporting 0 should be ignored, */
+  /* 3 means 'fully calibrated" */
+  uint8_t system, gyro, accel, mag;
+  system = gyro = accel = mag = 0;
+  bno.getCalibration(&system, &gyro, &accel, &mag);
+ 
+  /* The data should be ignored until the system calibration is > 0 */
+  Serial.print("\t");
+  if (!system)
+  {
+    Serial.print("! ");
+  }
+ 
+  /* Display the individual values */
+  Serial.print("Sys:");
+  Serial.print(system, DEC);
+  SystemCalib = system;
+  Serial.print(" G:");
+  Serial.print(gyro, DEC);
+  GyroCalib = gyro;
+  Serial.print(" A:");
+  Serial.print(accel, DEC);
+  AccelCalib = accel;
+  Serial.print(" M:");
+  Serial.println(mag, DEC);
 }

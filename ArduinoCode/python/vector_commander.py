@@ -4,7 +4,7 @@
 # Last Edited 11/22/20
 # Description:
 # This program manages the commands/movement/physical control of the RoboSub V1
-#
+
 import time
 import random
 import math
@@ -80,7 +80,8 @@ class MovementCommander:
         self.PowerBR = 0
         self.PowerFR = 0
         self.PowerFL = 0
-
+        # boolean for toggling between data sent
+        self.secondSetTrade = False
         # initialize thruster values to brake (self.PowerXX set to 0^)
         self.UpdateThrusters()
 
@@ -136,12 +137,11 @@ class MovementCommander:
                 break
         if self.MainCommand == self.ADVANCED_MOVEMENT_COMMANDS[3]:
             while self.CheckIfPositionDone():
-                self.Gyro.UpdateGyro()
-                self.Gyro.UpdatePosition()
+                self.UpdateGyro()
                 self.UpdateThrusters()
         else:
             while self.CheckIfGyroDone():
-                self.Gyro.UpdateGyro()
+                self.UpdateGyro()
                 self.UpdateThrusters()
 
     def AdvancedVectoring(self):
@@ -170,6 +170,10 @@ class MovementCommander:
     def receiveCommands(self, commandlist):
         # going through commands in parsed list
         self.CommandIndex = 0
+        # tell arduino to arm motors
+        self.SendToArduino("START")
+        print("Starting arduino... Wait 3.")
+        time.sleep(3)
         for command in commandlist:
             print("VectorCommander running: ", command)
             self.MainCommand = ""
@@ -209,25 +213,30 @@ class MovementCommander:
     def SendToArduino(self, whattosend):
         self.serial.write(whattosend.encode('utf-8'))
 
-    def SendMotorValues(self):
+    def TradeWithArduino(self):
         outdata = ""
-        outdata += str(self.ThrusterLB.GetSpeed())
-        outdata += ":"
-        outdata += str(self.ThrusterLF.GetSpeed())
-        outdata += ":"
-        outdata += str(self.ThrusterRB.GetSpeed())
-        outdata += ":"
-        outdata += str(self.ThrusterRF.GetSpeed())
-        outdata += ":"
-        outdata += str(self.ThrusterBL.GetSpeed())
-        outdata += ":"
-        outdata += str(self.ThrusterBR.GetSpeed())
-        outdata += ":"
-        outdata += str(self.ThrusterFL.GetSpeed())
-        outdata += ":"
-        outdata += str(self.ThrusterFR.GetSpeed())
-        outdata += "\n"
-        self.serial.write(outdata.encode('utf-8'))
+        if self.secondSetTrade:
+            outdata += str(self.ThrusterBL.GetSpeed())
+            outdata += ":"
+            outdata += str(self.ThrusterBR.GetSpeed())
+            outdata += ":"
+            outdata += str(self.ThrusterFL.GetSpeed())
+            outdata += ":"
+            outdata += str(self.ThrusterFR.GetSpeed())
+            outdata += "\n"
+            self.serial.write(outdata.encode('utf-8'))
+        if not self.secondSetTrade:
+            outdata += str(self.ThrusterLB.GetSpeed())
+            outdata += ":"
+            outdata += str(self.ThrusterLF.GetSpeed())
+            outdata += ":"
+            outdata += str(self.ThrusterRB.GetSpeed())
+            outdata += ":"
+            outdata += str(self.ThrusterRF.GetSpeed())
+            outdata += "\n"
+            self.serial.write(outdata.encode('utf-8'))
+        self.UpdateGyro()
+        self.UpdateThrusters()
 
     def CheckIfPositionDone(self, threshold=3, timethreshold=5):
         self.PositionRunning = True
@@ -243,14 +252,6 @@ class MovementCommander:
         return self.PositionRunning
 
     def UpdateThrusters(self):
-        self.Gyro.UpdateGyro()
-        self.Gyro.CalculateError(self.YawOffset,
-                                 self.PitchOffset,
-                                 self.RollOffset,
-                                 self.NorthOffset,
-                                 self.EastOffset,
-                                 self.DownOffset)
-        self.Gyro.PID()
         self.ThrusterBL.SetSpeedPID(self.PowerLB, yawpid=self.Gyro.getYawPID())
         self.ThrusterFL.SetSpeedPID(self.PowerLF, yawpid=self.Gyro.getYawPID())
         self.ThrusterBR.SetSpeedPID(self.PowerRB, yawpid=-self.Gyro.getYawPID())
@@ -268,7 +269,19 @@ class MovementCommander:
         self.ThrusterRF.SetSpeedPID(self.PowerFR,
                                     rollpid=self.Gyro.getRollPID(),
                                     pitchpid=-self.Gyro.getPitchPID())
-        self.SendMotorValues()
+
+    def UpdateGyro(self):
+        self.Gyro.UpdateGyro()
+        print(self.Gyro.getGyro())
+        self.Gyro.UpdatePosition()
+        print(self.Gyro.getPosition())
+        self.Gyro.CalculateError(self.YawOffset,
+                                 self.PitchOffset,
+                                 self.RollOffset,
+                                 self.NorthOffset,
+                                 self.EastOffset,
+                                 self.DownOffset)
+        self.Gyro.PID()
 
     def BrakeAllThrusters(self):
         # horizontal

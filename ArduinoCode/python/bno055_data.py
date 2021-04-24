@@ -88,14 +88,17 @@ class Sensor9Axis:
 
         # arm vehicle to see position
         print('Gyro Armed')
-        print(self.serial.readline())
+        self.serial.write("INIT".encode('utf-8'))
+        # print(self.serial.readline())
         # - Read the actual attitude: Roll, Pitch, and Yaw
         self.UpdateGyro()
         self.StartingGyro = self.Gyro
+        print('Orientation: ', self.getStartingGyro())
 
         # - Read the actual position North, East, and Down
-        # self.UpdatePosition()
-        # self.StartingPosition = self.Position
+        self.UpdatePosition()
+        self.StartingPosition = self.Position
+        print('Position: ', self.getStartingPosition())
 
         # - Read the actual depth:
         time.sleep(3)
@@ -106,20 +109,18 @@ class Sensor9Axis:
     def UpdateGyro(self):
         i = 0
         # print("Updating...")
-        for ColonParse in str(self.serial.readline()).strip("'").split(':'):
+        line = str(self.serial.readline()).strip("'").split(':')
+        for ColonParse in line:
             if ColonParse is not None:
                 ColonParse = re.findall(r"[-+]?\d*\.\d+|\d+", ColonParse)
-                # print("ColonParse: ", ColonParse, i)
-                if i == 0:
-                    if ColonParse == "Position":
-                        break
-                if i == 1:
-                    self.Gyro[YAW] = float(ColonParse[0])
-                if i == 2:
-                    self.Gyro[PITCH] = float(ColonParse[0])
-                if i == 3:
-                    self.Gyro[ROLL] = float(ColonParse[0].strip("\\"))
-                if i > 3:
+                if ColonParse == "Linear":
+                    break
+                if ColonParse == "x":
+                    self.Gyro[YAW] = float(line[i+1])
+                if ColonParse == "y":
+                    self.Gyro[PITCH] = float(line[i+1])
+                if ColonParse == "z":
+                    self.Gyro[ROLL] = float(line[i+1])
                     break
             i = i + 1
         # print("Gyro: ", self.Gyro)
@@ -127,19 +128,18 @@ class Sensor9Axis:
     # parse position object data from pixhawk, can then pass to other programs
     def UpdatePosition(self):
         i = 0
-        for ColonParse in str(self.serial.readline()).strip("'").split(':'):
+        line = str(self.serial.readline()).strip("'").split(':')
+        for ColonParse in line:
             if ColonParse is not None:
                 ColonParse = re.findall(r"[-+]?\d*\.\d+|\d+", ColonParse)
-                if i == 0:
-                    if ColonParse == "Orientation":
-                        break
-                if i == 1:
-                    self.Position[YAW] = float(ColonParse[0])
-                if i == 2:
-                    self.Position[PITCH] = float(ColonParse[0])
-                if i == 3:
-                    self.Position[ROLL] = float(ColonParse[0].strip("\\"))
-                if i > 3:
+                if ColonParse == "Orient":
+                    break
+                if ColonParse == "x":
+                    self.Position[NORTH] = float(line[i+1])
+                if ColonParse == "y":
+                    self.Position[EAST] = float(line[i+1])
+                if ColonParse == "z":
+                    self.Position[DOWN] = float(line[i+1])
                     break
             i = i + 1
 
