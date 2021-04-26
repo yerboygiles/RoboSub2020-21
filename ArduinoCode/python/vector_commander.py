@@ -18,7 +18,7 @@ A_TARGET = 1
 A_POSITION = 2
 A_GYRO = 3
 
-MAX_THROTTLE = 35
+MAX_THROTTLE = 15
 
 GENERAL_THROTTLE = 17.5
 
@@ -138,10 +138,9 @@ class MovementCommander:
                 break
             i = i + 1
         while Vectoring:
-            self.CheckIfGyroDone(threshold=10, timethreshold=10)
+            self.CheckIfGyroDone(threshold=10, timethreshold=3)
             Vectoring = self.GyroRunning
-            self.UpdateGyro()
-            self.UpdateThrusters()
+            self.TradeWithArduino()
 
     def AdvancedVectoring(self):
         pass
@@ -173,25 +172,31 @@ class MovementCommander:
         self.SendToArduino("START")
         print("Starting arduino... Wait 3.")
         time.sleep(3)
-        for command in commandlist:
-            print("VectorCommander running: ", command)
-            self.MainCommand = ""
-            self.SuppCommand = ""
-            j = 0
-            for commandParsed in str(command).split(','):
-                if j == 0:
-                    self.MainCommand = commandParsed
-                if j == 1:
-                    self.SuppCommand = commandParsed
-                j = j + 1
-            print("Main: ", self.MainCommand, ", Supplementary: ", self.SuppCommand)
-            for advancedcommand in self.ADVANCED_MOVEMENT_COMMANDS:
-                i = 0
-                if self.MainCommand == advancedcommand:
-                    self.InitialTime = time.perf_counter()
-                    self.BasicVectoring(self.SuppCommand)
-                i += 2
-            self.CommandIndex += 1
+        self.SendToArduino("MAXPOWER:20")
+        print("Sending settings... Wait 3.")
+        time.sleep(1)
+        try:
+            for command in commandlist:
+                print("VectorCommander running: ", command)
+                self.MainCommand = ""
+                self.SuppCommand = ""
+                j = 0
+                for commandParsed in str(command).split(','):
+                    if j == 0:
+                        self.MainCommand = commandParsed
+                    if j == 1:
+                        self.SuppCommand = commandParsed
+                    j = j + 1
+                print("Main: ", self.MainCommand, ", Supplementary: ", self.SuppCommand)
+                for advancedcommand in self.ADVANCED_MOVEMENT_COMMANDS:
+                    i = 0
+                    if self.MainCommand == advancedcommand:
+                        self.InitialTime = time.perf_counter()
+                        self.BasicVectoring(self.SuppCommand)
+                    i += 2
+                self.CommandIndex += 1
+        except:
+            self.Terminate()
 
     def CheckIfGyroDone(self, threshold=15, timethreshold=5):
         # if(self.Gyro.getYaw() < 0):
@@ -218,25 +223,42 @@ class MovementCommander:
     def TradeWithArduino(self):
         outdata = ""
         if self.secondSetTrade:
+            outdata += str(self.ThrusterBL.name)
+            outdata += ":"
             outdata += str(self.ThrusterBL.GetSpeed())
+            outdata += ","
+            outdata += str(self.ThrusterBR.name)
             outdata += ":"
             outdata += str(self.ThrusterBR.GetSpeed())
+            outdata += ","
+            outdata += str(self.ThrusterFL.name)
             outdata += ":"
             outdata += str(self.ThrusterFL.GetSpeed())
+            outdata += ","
+            outdata += str(self.ThrusterFR.name)
             outdata += ":"
             outdata += str(self.ThrusterFR.GetSpeed())
             outdata += "\n"
             self.serial.write(outdata.encode('utf-8'))
         if not self.secondSetTrade:
+            outdata += str(self.ThrusterLB.name)
+            outdata += ":"
             outdata += str(self.ThrusterLB.GetSpeed())
+            outdata += ","
+            outdata += str(self.ThrusterLF.name)
             outdata += ":"
             outdata += str(self.ThrusterLF.GetSpeed())
+            outdata += ","
+            outdata += str(self.ThrusterRB.name)
             outdata += ":"
             outdata += str(self.ThrusterRB.GetSpeed())
+            outdata += ","
+            outdata += str(self.ThrusterRF.name)
             outdata += ":"
             outdata += str(self.ThrusterRF.GetSpeed())
             outdata += "\n"
             self.serial.write(outdata.encode('utf-8'))
+        self.secondSetTrade = not self.secondSetTrade
         self.UpdateGyro()
         self.UpdateThrusters()
 

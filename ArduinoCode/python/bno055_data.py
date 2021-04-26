@@ -87,8 +87,6 @@ class Sensor9Axis:
         self.serial.flushInput()
 
         # arm vehicle to see position
-        print('Gyro Armed')
-        self.serial.write("INIT".encode('utf-8'))
         # print(self.serial.readline())
         # - Read the actual attitude: Roll, Pitch, and Yaw
         self.UpdateGyro()
@@ -96,9 +94,9 @@ class Sensor9Axis:
         print('Orientation: ', self.getStartingGyro())
 
         # - Read the actual position North, East, and Down
-        self.UpdatePosition()
-        self.StartingPosition = self.Position
-        print('Position: ', self.getStartingPosition())
+        # self.UpdatePosition()
+        # self.StartingPosition = self.Position
+        # print('Position: ', self.getStartingPosition())
 
         # - Read the actual depth:
         time.sleep(3)
@@ -107,6 +105,7 @@ class Sensor9Axis:
 
     # parse gyro object data from pixhawk, can then pass to other programs
     def UpdateGyro(self):
+        self.serial.write("GYRO".encode('utf-8'))
         i = 0
         # print("Updating...")
         line = str(self.serial.readline()).strip("'").split(':')
@@ -195,7 +194,10 @@ class Sensor9Axis:
 
         # error for proportional control
         # gyro
-        self.Error[GYRO][YAW] = self.Gyro[YAW] - yawoffset
+        if ((180 - abs(yawoffset)) + (180 - abs(self.Gyro[YAW]))) < 180:
+            self.Error[GYRO][YAW] = self.Gyro[YAW] - yawoffset
+        elif ((abs(yawoffset)) + (abs(self.Gyro[YAW]))) < 180:
+            self.Error[GYRO][YAW] = self.Gyro[YAW] + yawoffset
         self.Error[GYRO][PITCH] = self.Gyro[PITCH] - pitchoffset
         self.Error[GYRO][ROLL] = self.Gyro[ROLL] - rolloffset
 

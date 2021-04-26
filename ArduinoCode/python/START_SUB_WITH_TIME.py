@@ -13,7 +13,7 @@ import START_SUB as Mission
 
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
-GPIO.setup(23, GPIO.OUT)
+GPIO.setup(37, GPIO.OUT)
 GPIO.setup(15, GPIO.IN)
 print("Press button to start...")
 
@@ -22,17 +22,19 @@ MissionAlive = True
 print("Button pushed... Starting up...")
 time.sleep(3)
 for i in range(3):
-    GPIO.output(23, GPIO.HIGH)
+    GPIO.output(37, GPIO.HIGH)
     time.sleep(0.05)
-    GPIO.output(23, GPIO.LOW)
+    GPIO.output(37, GPIO.LOW)
     time.sleep(0.01)
 
-for i in range(30):  # change this number for how many seconds you'll need to put it in the water/test
-    GPIO.output(23, GPIO.HIGH)
+starttime = 75
+for i in range(starttime):  # change this number for how many seconds you'll need to put it in the water/test
+    GPIO.output(37, GPIO.HIGH)
     time.sleep(0.05)
-    GPIO.output(23, GPIO.LOW)
+    GPIO.output(37, GPIO.LOW)
     time.sleep(0.01)
     time.sleep(1)
+    print("T-minus: ", starttime-i)
 print("Running mission...")
 Mission.run()
 print("Mission complete...")
