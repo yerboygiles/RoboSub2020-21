@@ -77,8 +77,31 @@ String strinput;
 String thrusternamestr;
 String thrusterpowerstr;
 
-
 #define arr_len( x )  ( sizeof( x ) / sizeof( *x ) )
+
+void updateThrusters(void) {
+  LBthruster.writeMicroseconds(thrusterpower[0]); // sending driving values to arduino
+  LFthruster.writeMicroseconds(thrusterpower[1]);
+  RBthruster.writeMicroseconds(thrusterpower[2]);
+  RFthruster.writeMicroseconds(thrusterpower[3]);
+  BLthruster.writeMicroseconds(thrusterpower[4]);
+  BRthruster.writeMicroseconds(thrusterpower[5]);
+  FLthruster.writeMicroseconds(thrusterpower[6]);
+  FRthruster.writeMicroseconds(thrusterpower[7]);
+}
+void updateThrusters(int singleval) {
+  for(int i=0; i<=7; i++){
+    thrusterpower[i] = singleval;
+  }
+  LBthruster.writeMicroseconds(thrusterpower[0]); // sending driving values to arduino
+  LFthruster.writeMicroseconds(thrusterpower[1]);
+  RBthruster.writeMicroseconds(thrusterpower[2]);
+  RFthruster.writeMicroseconds(thrusterpower[3]);
+  BLthruster.writeMicroseconds(thrusterpower[4]);
+  BRthruster.writeMicroseconds(thrusterpower[5]);
+  FLthruster.writeMicroseconds(thrusterpower[6]);
+  FRthruster.writeMicroseconds(thrusterpower[7]);
+}
 
 void displaySensorDetails(void) {
   sensor_t sensor;
@@ -106,34 +129,17 @@ void setup() {
   BRthruster.attach(7);
   FLthruster.attach(8);
   FRthruster.attach(9);
-
-  LBthruster.writeMicroseconds(1500); // send "arm" signal to ESC. Also necessary to arm the ESC.
-  LFthruster.writeMicroseconds(1500);
-  RBthruster.writeMicroseconds(1500);
-  RFthruster.writeMicroseconds(1500);
-  BLthruster.writeMicroseconds(1500);
-  BRthruster.writeMicroseconds(1500);
-  FLthruster.writeMicroseconds(1500);
-  FRthruster.writeMicroseconds(1500);
+  updateThrusters(1500); // send "arm" signal to ESC. Also necessary to arm the ESC.
   delay(7000); // delay to allow the ESC to recognize the stopped signal.
   Serial1.println("Thrusters armed, resetting to stop.");
-  LBthruster.writeMicroseconds(0); // send "stop"/voltage off signal to ESC.
-  LFthruster.writeMicroseconds(0);
-  RBthruster.writeMicroseconds(0);
-  RFthruster.writeMicroseconds(0);
-  BLthruster.writeMicroseconds(0);
-  BRthruster.writeMicroseconds(0);
-  FLthruster.writeMicroseconds(0);
-  FRthruster.writeMicroseconds(0);
+  updateThrusters(0);  // send "stop"/voltage off signal to ESC.
   Serial.println("Orientation Sensor Test."); Serial.println("");
   /* Initialise the sensor */
-  if(!bno.begin())
-  {
+  if(!bno.begin()){
     /* There was a problem detecting the BNO055 ... check your connections */
     Serial1.print("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
     while(1);
   }
-  
   Serial.println("Calibration post start:");
   displayCalStatus();
   
@@ -175,17 +181,6 @@ void displayCalStatus(void)
   AccelCalib = accel;
   Serial.print(" M:");
   Serial.println(mag, DEC);
-}
-
-void writeMotors(void) {
-  LBthruster.writeMicroseconds(thrusterpower[0]); // sending driving values to arduino
-  LFthruster.writeMicroseconds(thrusterpower[1]);
-  RBthruster.writeMicroseconds(thrusterpower[2]);
-  RFthruster.writeMicroseconds(thrusterpower[3]);
-  BLthruster.writeMicroseconds(thrusterpower[4]);
-  BRthruster.writeMicroseconds(thrusterpower[5]);
-  FLthruster.writeMicroseconds(thrusterpower[6]);
-  FRthruster.writeMicroseconds(thrusterpower[7]);
 }
 
 void printEvent(sensors_event_t* event, Stream &serial) {
@@ -252,7 +247,8 @@ void loop() {
   yPos = yPos + ACCEL_POS_TRANSITION * linearAccelData.acceleration.y;
   zPos = zPos + ACCEL_POS_TRANSITION * linearAccelData.acceleration.z;
   
-  headingVel = ACCEL_VEL_TRANSITION * linearAccelData.acceleration.x / cos(DEG_2_RAD * orientationData.orientation.x);
+  headingVel = ACCEL_VEL_TRANSITION * linearAccelData.acceleration.x / 
+               cos(DEG_2_RAD * orientationData.orientation.x);
   thrustersValid = true;
   //printEvent(&orientationData, Serial);
   //printEvent(&linearAccelData, Serial);
@@ -271,42 +267,14 @@ void loop() {
     yOffset = orientationData.orientation.y;
     zOffset = orientationData.orientation.z;
   if (!(GyroCalib < 3)){
-      
-    LBthruster.writeMicroseconds(1500); // send "arm" signal to ESC. Also necessary to arm the ESC.
-    LFthruster.writeMicroseconds(1500);
-    RBthruster.writeMicroseconds(1500);
-    RFthruster.writeMicroseconds(1500);
-    BLthruster.writeMicroseconds(1500);
-    BRthruster.writeMicroseconds(1500);
-    FLthruster.writeMicroseconds(1500);
-    FRthruster.writeMicroseconds(1500);
+    updateThrusters(1500); // send "arm" signal to ESCs
     delay(3000);
-    LBthruster.writeMicroseconds(1600); // send "arm" signal to ESC. Also necessary to arm the ESC.
-    LFthruster.writeMicroseconds(1600);
-    RBthruster.writeMicroseconds(1600);
-    RFthruster.writeMicroseconds(1600);
-    BLthruster.writeMicroseconds(1600);
-    BRthruster.writeMicroseconds(1600);
-    FLthruster.writeMicroseconds(1600);
-    FRthruster.writeMicroseconds(1600);
+    updateThrusters(1600); // low forwards signal to ESCs
     delay(2000);
-    LBthruster.writeMicroseconds(1500); // send "arm" signal to ESC. Also necessary to arm the ESC.
-    LFthruster.writeMicroseconds(1500);
-    RBthruster.writeMicroseconds(1500);
-    RFthruster.writeMicroseconds(1500);
-    BLthruster.writeMicroseconds(1500);
-    BRthruster.writeMicroseconds(1500);
-    FLthruster.writeMicroseconds(1500);
-    FRthruster.writeMicroseconds(1500);
+    updateThrusters(1500); // send "arm" signal to ESCs, there's an issue with prolonged 
     delay(3000);
-    LBthruster.writeMicroseconds(0); // send "arm" signal to ESC. Also necessary to arm the ESC.
-    LFthruster.writeMicroseconds(0);
-    RBthruster.writeMicroseconds(0);
-    RFthruster.writeMicroseconds(0);
-    BLthruster.writeMicroseconds(0);
-    BRthruster.writeMicroseconds(0);
-    FLthruster.writeMicroseconds(0);
-    FRthruster.writeMicroseconds(0);
+    updateThrusters(0); // send "dead" signal to ESCs, theres an issue after prolonged time 
+                        // with random high movement here
     }
   }
   if(Serial1.available() > 0){ 
@@ -322,7 +290,7 @@ void loop() {
 //      thrusterpower[5] = 0;
 //      thrusterpower[6] = 0;
 //      thrusterpower[7] = 0;
-//      writeMotors();
+//      updateThrusters();
 //      printEvent(&orientationData, Serial1);
 //      printEvent(&linearAccelData, Serial1);
 //      delay(3000);
@@ -338,7 +306,7 @@ void loop() {
       thrusterpower[5] = 0;
       thrusterpower[6] = 0;
       thrusterpower[7] = 0;
-      writeMotors();
+      updateThrusters();
       delay(3000);
     }
     else if((strinput.compareTo("START")==0)) {
@@ -352,7 +320,7 @@ void loop() {
       thrusterpower[5] = 1500;
       thrusterpower[6] = 1500;
       thrusterpower[7] = 1500;
-      writeMotors();
+      updateThrusters();
       delay(3000);
     } 
     else if((getValue(strinput, ':', 0).compareTo("MAXPOWER")==0)) {
@@ -414,6 +382,6 @@ void loop() {
     }
     // dont write motors when stopped
     if(!stopped){
-      writeMotors();
+      updateThrusters();
     }
   }
