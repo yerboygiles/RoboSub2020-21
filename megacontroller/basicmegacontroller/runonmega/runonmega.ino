@@ -270,9 +270,6 @@ void loop() {
     xOffset = orientationData.orientation.x;
     yOffset = orientationData.orientation.y;
     zOffset = orientationData.orientation.z;
-//    Serial.println(xOffset);
-//    Serial.println(yOffset);
-//    Serial.println(zOffset);
   if (!(GyroCalib < 3)){
       
     LBthruster.writeMicroseconds(1500); // send "arm" signal to ESC. Also necessary to arm the ESC.
@@ -315,10 +312,6 @@ void loop() {
   if(Serial1.available() > 0){ 
      
     strinput = Serial1.readStringUntil('\n');
-//    Serial.print("Stop?: "); 
-//    Serial.println((strinput.compareTo("STOP")));
-//    Serial.print("Start?: "); 
-//    Serial.println((strinput.compareTo("START")));
 //    if((strinput.compareTo("INIT")==0)) {
 //      Serial.println("Init. Wait 3.");
 //      thrusterpower[0] = 0;
@@ -381,13 +374,10 @@ void loop() {
         Serial.print(thrusternamestr);
         Serial.print(", Power: ");
         Serial.println(thrusterpowerstr);
-        //strdata = strtok(strings[index],",");
         
         if (thrusternamestr.compareTo("FR")==0){
           thrusterpowerstr = getValue(strings[index], ':', 1);
           thrusterpower[7] = thrusterpowerstr.toFloat();
-//          Serial.print("FR: ");
-//          Serial.println(thrusterpowerstr.toFloat());
         }
         else if (thrusternamestr.compareTo("FL")==0){
           thrusterpowerstr = getValue(strings[index], ':', 1);
@@ -422,48 +412,8 @@ void loop() {
       } 
       Serial.println("");
     }
-//    else{
-//      Serial.print("LB: ");
-//      Serial.print(thrusterpower[0]);
-//      Serial.print("LF: ");
-//      Serial.print(thrusterpower[1]);
-//      Serial.print("RB: ");
-//      Serial.print(thrusterpower[2]);
-//      Serial.print("RF: ");
-//      Serial.print(thrusterpower[3]);
-//      Serial.print("BL: ");
-//      Serial.print(thrusterpower[4]);
-//      Serial.print("BR: ");
-//      Serial.print(thrusterpower[5]);
-//      Serial.print("FL: ");
-//      Serial.print(thrusterpower[6]);
-//      Serial.print("FR: ");
-//      Serial.print(thrusterpower[7]);
-//      Serial.print(", Stopped? 1 is True, 0 is False: ");
-//      Serial.print(stopped);
-//      Serial.println("");
-//    }
-    // This is the testing shit, sends over USB instead of rxtx wire
+    // dont write motors when stopped
     if(!stopped){
       writeMotors();
     }
-    
-//    printEvent(&orientationData, Serial1);
-//    printEvent(&linearAccelData, Serial1);
-    
-//    Serial1.print("Orientation:");
-//    Serial1.print(orientationData.orientation.x);
-//    Serial1.print(":");
-//    Serial1.print(orientationData.orientation.y);
-//    Serial1.print(":");
-//    Serial1.print(orientationData.orientation.z);
-//    Serial1.println("");
-
-//    Serial1.print("Position:");
-//    Serial1.print(xPos);
-//    Serial1.print(":");
-//    Serial1.print(yPos);
-//    Serial1.print(":");
-//    Serial1.print(zPos);
-//    Serial1.println("");
   }
