@@ -10,6 +10,7 @@ import random
 import math
 import serial
 import bno055_data
+import phidget9dof_data
 import gyro_data_merger
 from threading import Thread
 
@@ -31,10 +32,11 @@ class MovementCommander:
         self.UsingGyro = usinggyro
         self.serial = serial.Serial('/dev/ttyAMA0', 115200)
         if self.UsingGyro:
-            self.Gyro = bno055_data.Sensor9Axis(self.serial)
-            # self.GyroMerger = gyro_data_merger.GyroMerger(self.Gyro)
+            self.Gyro_drone = bno055_data.BN055(self.serial)
+            self.Gyro_queen = phidget9dof_data.Phidget9dof()
+            self.Gyro_hive = gyro_data_merger.GyroMerger(self.Gyro_queen)
         if resetheadingoncmd:
-            self.YawOffset = self.Gyro.StartingGyro[0]
+            self.YawOffset = self.Gyro_hive.StartingGyro[0]
             self.ResetHeadingOnCMD = resetheadingoncmd
         self.YawOffset = 0
         self.PitchOffset = 0
@@ -201,19 +203,15 @@ class MovementCommander:
         # if(self.Gyro.getYaw() < 0):
         self.GyroRunning = True
         integer = 0
-        if (abs(self.Gyro.getYaw() - abs(self.YawOffset)) < threshold) and (
-                abs(self.Gyro.getPitch() - abs(self.PitchOffset)) < threshold) and (
-                abs(self.Gyro.getRoll() - abs(self.RollOffset)) < threshold):
+        if (abs(self.Gyro_hive.getYaw() - abs(self.YawOffset)) < threshold) and (
+                abs(self.Gyro_hive.getPitch() - abs(self.PitchOffset)) < threshold) and (
+                abs(self.Gyro_hive.getRoll() - abs(self.RollOffset)) < threshold):
             self.ElapsedTime = time.perf_counter() - self.InitialTime
             print("Within gyro threshold. Waiting ", timethreshold, "...")
             if self.ElapsedTime >= timethreshold:
                 self.GyroRunning = False
         else:
-            print("Gyro:", self.Gyro.getGyro())
-            # print("Trying to move to ", self.YawOffset, self.PitchOffset, self.RollOffset, ", currently at ",
-            #       self.Gyro.getYaw(), self.Gyro.getPitch(), self.Gyro.getRoll())
-            integer = integer + 1
-            # print("What?", integer)
+            print("Gyro:", self.Gyro_hive.getGyro())
             self.InitialTime = time.perf_counter()
 
     def SendToArduino(self, whattosend):
@@ -263,9 +261,9 @@ class MovementCommander:
 
     def CheckIfPositionDone(self, threshold=3, timethreshold=5):
         self.PositionRunning = True
-        if (abs(self.Gyro.getNorth() - self.NorthOffset) < threshold) and (
-                abs(self.Gyro.getEast() - self.EastOffset) < threshold) and (
-                abs(self.Gyro.getDown() - self.DownOffset) < threshold):
+        if (abs(self.Gyro_hive.getNorth() - self.NorthOffset) < threshold) and (
+                abs(self.Gyro_hive.getEast() - self.EastOffset) < threshold) and (
+                abs(self.Gyro_hive.getDown() - self.DownOffset) < threshold):
             self.ElapsedTime = time.perf_counter() - self.InitialTime
             print("Within position threshold. Waiting ", timethreshold, "...")
             if self.ElapsedTime >= timethreshold:
@@ -278,36 +276,36 @@ class MovementCommander:
         pass
 
     def UpdateThrusters(self):
-        self.ThrusterBL.SetSpeedPID(self.PowerLB, yawpid=self.Gyro.getYawPID())
-        self.ThrusterFL.SetSpeedPID(self.PowerLF, yawpid=self.Gyro.getYawPID())
-        self.ThrusterBR.SetSpeedPID(self.PowerRB, yawpid=-self.Gyro.getYawPID())
-        self.ThrusterFR.SetSpeedPID(self.PowerRF, yawpid=-self.Gyro.getYawPID())
+        self.ThrusterBL.SetSpeedPID(self.PowerLB, yawpid=self.Gyro_hive.getYawPID())
+        self.ThrusterFL.SetSpeedPID(self.PowerLF, yawpid=self.Gyro_hive.getYawPID())
+        self.ThrusterBR.SetSpeedPID(self.PowerRB, yawpid=-self.Gyro_hive.getYawPID())
+        self.ThrusterFR.SetSpeedPID(self.PowerRF, yawpid=-self.Gyro_hive.getYawPID())
 
         self.ThrusterLB.SetSpeedPID(self.PowerBL,
-                                    rollpid=self.Gyro.getRollPID(),
-                                    pitchpid=-self.Gyro.getPitchPID())
+                                    rollpid=self.Gyro_hive.getRollPID(),
+                                    pitchpid=-self.Gyro_hive.getPitchPID())
         self.ThrusterRB.SetSpeedPID(self.PowerBR,
-                                    rollpid=-self.Gyro.getRollPID(),
-                                    pitchpid=-self.Gyro.getPitchPID())
+                                    rollpid=-self.Gyro_hive.getRollPID(),
+                                    pitchpid=-self.Gyro_hive.getPitchPID())
         self.ThrusterLF.SetSpeedPID(self.PowerFL,
-                                    rollpid=-self.Gyro.getRollPID(),
-                                    pitchpid=-self.Gyro.getPitchPID())
+                                    rollpid=-self.Gyro_hive.getRollPID(),
+                                    pitchpid=-self.Gyro_hive.getPitchPID())
         self.ThrusterRF.SetSpeedPID(self.PowerFR,
-                                    rollpid=self.Gyro.getRollPID(),
-                                    pitchpid=-self.Gyro.getPitchPID())
+                                    rollpid=self.Gyro_hive.getRollPID(),
+                                    pitchpid=-self.Gyro_hive.getPitchPID())
 
     def UpdateGyro(self):
-        self.Gyro.UpdateGyro()
+        self.Gyro_hive.UpdateGyro()
         # print(self.Gyro.getGyro())
         # self.Gyro.UpdatePosition()
         # print(self.Gyro.getPosition())
-        self.Gyro.CalculateError(self.YawOffset,
+        self.Gyro_hive.CalculateError(self.YawOffset,
                                  self.PitchOffset,
                                  self.RollOffset,
                                  self.NorthOffset,
                                  self.EastOffset,
                                  self.DownOffset)
-        self.Gyro.PID()
+        self.Gyro_hive.PID()
 
     def BrakeAllThrusters(self):
         # horizontal

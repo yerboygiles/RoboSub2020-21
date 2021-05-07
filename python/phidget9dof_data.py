@@ -1,20 +1,18 @@
 #!python3
 # Author: Theodor Giles
 # Created: 7/15/20
-# Last Edited 8/12/20
+# Last Edited 5/7/21
 # Description:
-# gets data from the simulated/non-simulated pixhawk for attitude, positioning, and maybe some
+# Retrieves data from the phidgetspatial 9dof, gyro/accelerometer and positioning data
 # other cool tasks it can do
 
-import serial
+from Phidget22.Phidget import *
+from Phidget22.Devices.Accelerometer import *
+from Phidget22.Devices.Gyroscope import *
 import time
 import re
 import math
 
-# sitl is basically a simulation, can be "ran" from any computer kinda? I will figure out a way to make an incorporated
-# 3d python sim for managing all this at some point
-# sitl = dronekit_sitl.start_default()  # (sitl.start)
-# connection_string = sitl.connection_string()
 GYRO: int = 0
 POSITION: int = 1
 YAW: int = 0
@@ -24,7 +22,6 @@ NORTH: int = 0
 EAST: int = 1
 DOWN: int = 2
 
-
 def MapToAngle(x):
     in_min = -100.0
     in_max = 100.0
@@ -33,7 +30,7 @@ def MapToAngle(x):
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
 
 
-class Sensor9Axis:
+class Phidget9dof:
     StringIn = ""
     Gyro = [0.0, 0.0, 0.0]
     Position = [0.0, 0.0, 0.0]
@@ -80,11 +77,9 @@ class Sensor9Axis:
     Roll_I = 0.0
     Roll_D = 0.0
 
-    def __init__(self, serial):
+    def __init__(self):
 
         # read info from vehicle
-        self.serial = serial
-        self.serial.flushInput()
 
         # arm vehicle to see position
         print('Gyro Armed')

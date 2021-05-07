@@ -64,6 +64,9 @@ bool stopped = true;
 int thrusterpower[8];
 
 int maxpower;
+int lowerlim;
+int higherlim;
+int dutycycle;
 
 String strings[8];
 
@@ -310,6 +313,8 @@ void loop() {
     } 
     index = 0;
     dataindex = -1;
+    lowerlim = (1500-(400)*(maxpower/100));
+    higherlim = (1500+(400)*(maxpower/100));
     while(getValue(strinput, ',', index) != NULL)
       {
         strings[index] = getValue(strinput, ',', index);
@@ -318,38 +323,39 @@ void loop() {
         Serial.print(thrusternamestr);
         Serial.print(", Power: ");
         Serial.println(thrusterpowerstr);
-        
+        dutycycle = thrusterpowerstr.toFloat();
+        map(dutycycle, 1100, 1900, lowerlim, higherlim);
         if (thrusternamestr.compareTo("FR")==0){
           thrusterpowerstr = getValue(strings[index], ':', 1);
-          thrusterpower[7] = thrusterpowerstr.toFloat();
+          thrusterpower[7] = dutycycle;
         }
         else if (thrusternamestr.compareTo("FL")==0){
           thrusterpowerstr = getValue(strings[index], ':', 1);
-          thrusterpower[6] = thrusterpowerstr.toFloat();
+          thrusterpower[6] = dutycycle;
         }
         else if (thrusternamestr.compareTo("BR")==0){
           thrusterpowerstr = getValue(strings[index], ':', 1);
-          thrusterpower[5] = thrusterpowerstr.toFloat();
+          thrusterpower[5] = dutycycle;
         }
         else if (thrusternamestr.compareTo("BL")==0){
           thrusterpowerstr = getValue(strings[index], ':', 1);
-          thrusterpower[4] = thrusterpowerstr.toFloat();
+          thrusterpower[4] = dutycycle;
         }
         else if (thrusternamestr.compareTo("RF")==0){
           thrusterpowerstr = getValue(strings[index], ':', 1);
-          thrusterpower[3] = thrusterpowerstr.toFloat();
+          thrusterpower[3] = dutycycle;
         }
         else if (thrusternamestr.compareTo("RB")==0){
           thrusterpowerstr = getValue(strings[index], ':', 1);
-          thrusterpower[2] = thrusterpowerstr.toFloat();
+          thrusterpower[2] = dutycycle;
         }
         else if (thrusternamestr.compareTo("LF")==0){
           thrusterpowerstr = getValue(strings[index], ':', 1);
-          thrusterpower[1] = thrusterpowerstr.toFloat();
+          thrusterpower[1] = dutycycle;
         }
         else if (thrusternamestr.compareTo("LB")==0){
           thrusterpowerstr = getValue(strings[index], ':', 1);
-          thrusterpower[0] = thrusterpowerstr.toFloat();
+          thrusterpower[0] = dutycycle;
         }
         index++;
         //ptr = strtok(NULL, ":");  // takes a list of delimiters

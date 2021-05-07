@@ -25,15 +25,7 @@ EAST: int = 1
 DOWN: int = 2
 
 
-def MapToAngle(x):
-    in_min = -100.0
-    in_max = 100.0
-    out_min = 0.0
-    out_max = 180.0
-    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
-
-
-class Sensor9Axis:
+class BN055:
     StringIn = ""
     Gyro = [0.0, 0.0, 0.0]
     Position = [0.0, 0.0, 0.0]
