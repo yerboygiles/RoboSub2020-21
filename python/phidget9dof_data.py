@@ -3,12 +3,12 @@
 # Created: 7/15/20
 # Last Edited 5/7/21
 # Description:
-# Retrieves data from the phidgetspatial 9dof, gyro/accelerometer and positioning data
+# Retrieves data from the phidgetspatial 9dof,
+# gyro/accelerometer and positioning data
 # other cool tasks it can do
 
 from Phidget22.Phidget import *
-from Phidget22.Devices.Accelerometer import *
-from Phidget22.Devices.Gyroscope import *
+from Phidget22.Devices.Spatial import *
 import time
 import re
 import math
@@ -21,6 +21,7 @@ ROLL: int = 2
 NORTH: int = 0
 EAST: int = 1
 DOWN: int = 2
+
 
 def MapToAngle(x):
     in_min = -100.0
@@ -78,13 +79,15 @@ class Phidget9dof:
     Roll_D = 0.0
 
     def __init__(self):
-
         # read info from vehicle
+        spatial0 = Spatial()
+
+        spatial0.setOnSpatialDataHandler(self.onSpatialData)
+
+        spatial0.openWaitForAttachment(5000)
 
         # arm vehicle to see position
         print('Gyro Armed')
-        self.serial.write("INIT".encode('utf-8'))
-        # print(self.serial.readline())
         # - Read the actual attitude: Roll, Pitch, and Yaw
         self.UpdateGyro()
         self.StartingGyro = self.Gyro
@@ -100,46 +103,22 @@ class Phidget9dof:
         print("Starting gyro: ", self.StartingGyro)
         # print("Starting position: ", self.Position)
 
+    def onSpatialData(self, acceleration, angularRate, magneticField, timestamp):
+        print(
+            "Acceleration: \t" + str(acceleration[0]) + "  |  " + str(acceleration[1]) + "  |  " + str(acceleration[2]))
+        print("AngularRate: \t" + str(angularRate[0]) + "  |  " + str(angularRate[1]) + "  |  " + str(angularRate[2]))
+        print("MagneticField: \t" + str(magneticField[0]) + "  |  " + str(magneticField[1]) + "  |  " + str(
+            magneticField[2]))
+        print("Timestamp: " + str(timestamp))
+        print("----------")
+
     # parse gyro object data from pixhawk, can then pass to other programs
     def UpdateGyro(self):
-        i = 0
-        # print("Updating...")
-        line = str(self.serial.readline()).strip("'").split(':')
-        for ColonParse in line:
-            if ColonParse is not None:
-                ColonParse = re.findall(r"[-+]?\d*\.\d+|\d+", ColonParse)
-                if ColonParse == "Linear":
-                    break
-                if ColonParse == "x":
-                    self.Gyro[YAW] = float(line[i+1])
-                if ColonParse == "y":
-                    self.Gyro[PITCH] = float(line[i+1])
-                if ColonParse == "z":
-                    self.Gyro[ROLL] = float(line[i+1])
-                    break
-            i = i + 1
-        # print("Gyro: ", self.Gyro)
+        pass
 
     # parse position object data from pixhawk, can then pass to other programs
     def UpdatePosition(self):
-        i = 0
-        line = str(self.serial.readline()).strip("'").split(':')
-        for ColonParse in line:
-            if ColonParse is not None:
-                ColonParse = re.findall(r"[-+]?\d*\.\d+|\d+", ColonParse)
-                if ColonParse == "Orient":
-                    break
-                if ColonParse == "x":
-                    self.Position[NORTH] = float(line[i+1])
-                if ColonParse == "y":
-                    self.Position[EAST] = float(line[i+1])
-                if ColonParse == "z":
-                    self.Position[DOWN] = float(line[i+1])
-                    break
-            i = i + 1
-
-    def WriteToSerial(self, toprint):
-        self.serial.writelines(toprint)
+        pass
 
     # position read when starting the RoboSub
     def getStartingPosition(self):
@@ -177,7 +156,6 @@ class Phidget9dof:
 
     # req for PID calculation
     def CalculateError(self, yawoffset, pitchoffset, rolloffset, northoffset, eastoffset, downoffset):
-
         # previous error for error delta
         # gyro
         self.Previous_Error[GYRO][YAW] = self.Error[GYRO][YAW]

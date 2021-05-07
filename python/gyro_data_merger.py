@@ -72,8 +72,8 @@ class GyroMerger:
     Roll_I = 0.0
     Roll_D = 0.0
 
-    Master_Gyro = None
-    Slave_Gyro1 = None
+    Gyro_queen = None
+    Gyro_drone1 = None
     Slave_Gyro2 = None
     Yaw_Discrepancy = 0
     Pitch_Discrepancy = 0
@@ -83,14 +83,14 @@ class GyroMerger:
     East_Discrepancy = 0
     Down_Discrepancy = 0
 
-    def __init__(self, board, master, slave1, slave2):  # not the Boba Fett one
+    def __init__(self, board, queen, drone1=None, drone2=None):
 
         # read info from vehicle
         ser = board
 
-        self.Master_Gyro = master
-        self.Slave_Gyro1 = slave1
-        self.Slave_Gyro2 = slave2
+        self.Gyro_queen = queen
+        self.Gyro_drone1 = drone1
+        self.Slave_Gyro2 = drone2
 
         # arm vehicle to see position
         print('Gyro Armed')
@@ -110,41 +110,38 @@ class GyroMerger:
 
     # parse gyro object data from pixhawk, can then pass to other programs
     def UpdateGyro(self):
-        self.Yaw_Discrepancy = self.Gyro[YAW] - self.Slave_Gyro1.Gyro[YAW]
-        self.Pitch_Discrepancy = self.Gyro[PITCH] - self.Slave_Gyro1.Gyro[PITCH]
-        self.Roll_Discrepancy = self.Gyro[ROLL] - self.Slave_Gyro1.Gyro[ROLL]
+        self.Yaw_Discrepancy = self.Gyro[YAW] - self.Gyro_drone1.Gyro[YAW]
+        self.Pitch_Discrepancy = self.Gyro[PITCH] - self.Gyro_drone1.Gyro[PITCH]
+        self.Roll_Discrepancy = self.Gyro[ROLL] - self.Gyro_drone1.Gyro[ROLL]
 
         if self.Yaw_Discrepancy < 20:
-            self.Gyro[YAW] = (self.Master_Gyro.Gyro[YAW] + self.Slave_Gyro1.Gyro[YAW]) / 2
+            self.Gyro[YAW] = (self.Gyro_queen.Gyro[YAW] + self.Gyro_drone1.Gyro[YAW]) / 2
         else:
-            self.Gyro[YAW] = self.Master_Gyro.Gyro[YAW]
+            self.Gyro[YAW] = self.Gyro_queen.Gyro[YAW]
         if self.Pitch_Discrepancy < 20:
-            self.Gyro[PITCH] = (self.Master_Gyro.Gyro[PITCH] + self.Slave_Gyro1.Gyro[PITCH]) / 2
+            self.Gyro[PITCH] = (self.Gyro_queen.Gyro[PITCH] + self.Gyro_drone1.Gyro[PITCH]) / 2
         else:
-            self.Gyro[PITCH] = self.Master_Gyro.Gyro[PITCH]
+            self.Gyro[PITCH] = self.Gyro_queen.Gyro[PITCH]
         if self.Roll_Discrepancy < 20:
-            self.Gyro[ROLL] = (self.Master_Gyro.Gyro[ROLL] + self.Slave_Gyro1.Gyro[ROLL]) / 2
+            self.Gyro[ROLL] = (self.Gyro_queen.Gyro[ROLL] + self.Gyro_drone1.Gyro[ROLL]) / 2
         else:
-            self.Gyro[ROLL] = self.Master_Gyro.Gyro[ROLL]
+            self.Gyro[ROLL] = self.Gyro_queen.Gyro[ROLL]
 
     # parse position object data from pixhawk, can then pass to other programs
     def UpdatePosition(self):
-        self.North_Discrepancy = self.Position[NORTH] - self.Slave_Gyro1.Position[NORTH]
-        self.East_Discrepancy = self.Position[EAST] - self.Slave_Gyro1.Position[EAST]
-        self.Down_Discrepancy = self.Position[DOWN] - self.Slave_Gyro1.Position[DOWN]
+        self.North_Discrepancy = self.Position[NORTH] - self.Gyro_drone1.Position[NORTH]
+        self.East_Discrepancy = self.Position[EAST] - self.Gyro_drone1.Position[EAST]
+        self.Down_Discrepancy = self.Position[DOWN] - self.Gyro_drone1.Position[DOWN]
 
-        if self.North_Discrepancy < 20:
-            self.Position[NORTH] = (self.Master_Gyro.Position[NORTH] + self.Slave_Gyro1.Position[NORTH]) / 2
+        if self.North_Discrepancy < 20 and self.East_Discrepancy < 20 and self.Down_Discrepancy < 20:
+            self.Position[NORTH] = (self.Gyro_queen.Position[NORTH] + self.Gyro_drone1.Position[NORTH]) / 2
+
+            self.Position[EAST] = (self.Gyro_queen.Position[EAST] + self.Gyro_drone1.Position[EAST]) / 2
+
+            self.Position[DOWN] = (self.Gyro_queen.Position[DOWN] + self.Gyro_drone1.Position[DOWN]) / 2
+
         else:
-            self.Position[NORTH] = self.Master_Gyro.Position[NORTH]
-        if self.East_Discrepancy < 20:
-            self.Position[EAST] = (self.Master_Gyro.Position[EAST] + self.Slave_Gyro1.Position[EAST]) / 2
-        else:
-            self.Position[EAST] = self.Master_Gyro.Position[EAST]
-        if self.Down_Discrepancy < 30:
-            self.Position[DOWN] = (self.Master_Gyro.Position[DOWN] + self.Slave_Gyro1.Position[DOWN]) / 2
-        else:
-            self.Position[DOWN] = self.Master_Gyro.Position[DOWN]
+            self.Position[NORTH] = self.Gyro_queen.Position[NORTH]
 
         # print("error reading position")
         # print(self.Position)
