@@ -305,6 +305,8 @@ void loop() {
     else if((getValue(strinput, ':', 0).compareTo("MAXPOWER")==0)) {
       Serial.println("Setting max power. Wait 1.");
       maxpower = getValue(strinput, ':', 1).toFloat();
+      lowerlim = (1500-(400)*(maxpower/100));
+      higherlim = (1500+(400)*(maxpower/100));
       delay(1000);
     } 
     else if((strinput.compareTo("GYRO")==0)) {
@@ -313,8 +315,6 @@ void loop() {
     } 
     index = 0;
     dataindex = -1;
-    lowerlim = (1500-(400)*(maxpower/100));
-    higherlim = (1500+(400)*(maxpower/100));
     while(getValue(strinput, ',', index) != NULL)
       {
         strings[index] = getValue(strinput, ',', index);
