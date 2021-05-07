@@ -29,7 +29,7 @@ Our RoboSub hardware currently consists of-
    The Raspberry Pi doesn't require too much configuration, but there still is some. First, run "sudo raspi-config" in the terminal, and enable VNC, serial communication under interfacing options (but disable the "shell" whatever option"), and whatever other settings you'd like. I like to have the Pi boot to the desktop. See if you can figure that out. If you would like to interface with Pi from your own computer without having to have it connected to a monitor, keyboard, and mouse, then install VNC-viewer. There are some very easy instructions online. 
 "Installing VNC viewer on Rpi", or something like that.
 
-**PixHawk** - (For data/gyro/positioning only currently, but can be implemented to use other functionality if someone so chooses)
+**9 DOF Sensor (BN055, etc.)** - (For gyro/positioning/accelerometer)
 
    The PixHawk is an annoying little board, whereas it requires some extra setup that is somewhat intuitive. On your own computer, you must install a program called QGroundControl in order to upload the necessary firmware to it via USB between your computer and the PixHawk. It should walk you through it, but the button to mess with the settings is accessible through the top left icons, where a gear should show up after some finagling. From there, the firmware tab opens, and you should be able to upload the ArduSub firmware. After it is done uploading, it will ask you to do some calibration. Follow the instructions, and orient the board in the ways shown. After everything is calibrated, you're good to go. 
 
