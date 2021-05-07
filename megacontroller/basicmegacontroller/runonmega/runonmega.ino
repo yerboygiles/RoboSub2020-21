@@ -282,15 +282,7 @@ void loop() {
     strinput = Serial1.readStringUntil('\n');
 //    if((strinput.compareTo("INIT")==0)) {
 //      Serial.println("Init. Wait 3.");
-//      thrusterpower[0] = 0;
-//      thrusterpower[1] = 0;
-//      thrusterpower[2] = 0;
-//      thrusterpower[3] = 0;
-//      thrusterpower[4] = 0;
-//      thrusterpower[5] = 0;
-//      thrusterpower[6] = 0;
-//      thrusterpower[7] = 0;
-//      updateThrusters();
+//      updateThrusters(0);
 //      printEvent(&orientationData, Serial1);
 //      printEvent(&linearAccelData, Serial1);
 //      delay(3000);
@@ -298,29 +290,13 @@ void loop() {
     if((strinput.compareTo("STOP")==0)) {
       Serial.println("Thrusters disengaging. Wait 3.");
       stopped = true;
-      thrusterpower[0] = 0;
-      thrusterpower[1] = 0;
-      thrusterpower[2] = 0;
-      thrusterpower[3] = 0;
-      thrusterpower[4] = 0;
-      thrusterpower[5] = 0;
-      thrusterpower[6] = 0;
-      thrusterpower[7] = 0;
-      updateThrusters();
+      updateThrusters(0);
       delay(3000);
     }
     else if((strinput.compareTo("START")==0)) {
       Serial.println("Thrusters engaging. Wait 3.");
       stopped = false;
-      thrusterpower[0] = 1500;
-      thrusterpower[1] = 1500;
-      thrusterpower[2] = 1500;
-      thrusterpower[3] = 1500;
-      thrusterpower[4] = 1500;
-      thrusterpower[5] = 1500;
-      thrusterpower[6] = 1500;
-      thrusterpower[7] = 1500;
-      updateThrusters();
+      updateThrusters(1500);
       delay(3000);
     } 
     else if((getValue(strinput, ':', 0).compareTo("MAXPOWER")==0)) {

@@ -22,7 +22,6 @@ MAX_THROTTLE = 15
 
 GENERAL_THROTTLE = 17.5
 
-
 class MovementCommander:
 
     # initialize everything to supposed starting position

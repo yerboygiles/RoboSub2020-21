@@ -15,19 +15,20 @@ GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(37, GPIO.OUT)
 GPIO.setup(15, GPIO.IN)
-print("Press button to start...")
+# print("Press button to start...")
 
 MissionAlive = True
+#
+# print("Button pushed... Starting up...")
+# time.sleep(3)
+# for i in range(3):
+#     GPIO.output(37, GPIO.HIGH)
+#     time.sleep(0.05)
+#     GPIO.output(37, GPIO.LOW)
+#     time.sleep(0.01)
 
-print("Button pushed... Starting up...")
-time.sleep(3)
-for i in range(3):
-    GPIO.output(37, GPIO.HIGH)
-    time.sleep(0.05)
-    GPIO.output(37, GPIO.LOW)
-    time.sleep(0.01)
-
-starttime = 75
+starttime = input("Seconds until start?")
+print("Starting countdown.")
 for i in range(starttime):  # change this number for how many seconds you'll need to put it in the water/test
     GPIO.output(37, GPIO.HIGH)
     time.sleep(0.05)
