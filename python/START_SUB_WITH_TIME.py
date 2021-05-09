@@ -11,18 +11,21 @@ import RPi.GPIO as GPIO
 import time
 import START_SUB as Mission
 
+button = 22
+buzzer = 26
+
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
-GPIO.setup(37, GPIO.OUT)
-GPIO.setup(15, GPIO.IN)
+GPIO.setup(buzzer, GPIO.OUT)
+GPIO.setup(button, GPIO.IN)
 
-button = 15
-buzzer = 37
-# print("Press button to start...")
+print("Press button to start...")
 buttonwait = True
-while buttonwait:
-    buttonwait = GPIO.input(button)
-
+try:
+    while buttonwait:
+        buttonwait = GPIO.input(button)
+except:
+    pass
 MissionAlive = True
 #
 print("Button pushed... Starting up...")
@@ -33,7 +36,7 @@ for i in range(3):
     GPIO.output(buzzer, GPIO.LOW)
     time.sleep(0.01)
 
-starttime = input("Seconds until start?")
+starttime = int(input("Seconds until start?"))
 print("Starting countdown.")
 for i in range(starttime):  # change this number for how many seconds you'll need to put it in the water/test
     GPIO.output(buzzer, GPIO.HIGH)

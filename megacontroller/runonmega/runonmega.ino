@@ -141,6 +141,7 @@ void setup() {
   if(!bno.begin()){
     /* There was a problem detecting the BNO055 ... check your connections */
     Serial1.print("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
+    Serial.print("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
     while(1);
   }
   Serial.println("Calibration post start:");
