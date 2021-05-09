@@ -106,6 +106,11 @@ class Phidget9dof:
     def onSpatialData(self, acceleration, angularRate, magneticField, timestamp):
         print(
             "Acceleration: \t" + str(acceleration[0]) + "  |  " + str(acceleration[1]) + "  |  " + str(acceleration[2]))
+
+        self.Position[NORTH] = acceleration[NORTH] * (timestamp**2)
+        self.Position[EAST] =  acceleration[EAST] * (timestamp**2)
+        self.Position[DOWN] = acceleration[DOWN] * (timestamp**2)
+
         print("AngularRate: \t" + str(angularRate[0]) + "  |  " + str(angularRate[1]) + "  |  " + str(angularRate[2]))
         print("MagneticField: \t" + str(magneticField[0]) + "  |  " + str(magneticField[1]) + "  |  " + str(
             magneticField[2]))

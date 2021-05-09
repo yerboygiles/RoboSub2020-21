@@ -34,7 +34,7 @@ class MovementCommander:
         if self.UsingGyro:
             self.Gyro_drone1 = bno055_data.BN055(self.serial)
             self.Gyro_queen = phidget9dof_data.Phidget9dof()
-            self.Gyro_hive = gyro_data_merger.GyroMerger(self.Gyro_queen,self.Gyro_drone1)
+            self.Gyro_hive = gyro_data_merger.GyroMerger(self.Gyro_queen, self.Gyro_drone1)
         if resetheadingoncmd:
             self.YawOffset = self.Gyro_hive.StartingGyro[0]
             self.ResetHeadingOnCMD = resetheadingoncmd
