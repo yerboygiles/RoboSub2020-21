@@ -1,7 +1,7 @@
 #!python3
 # Author: Theodor Giles
 # Created: 7/15/20
-# Last Edited 2/28/21
+# Last Edited 5/14/21
 # Description:
 # Modified version of the gyro data class, dedicated for merging gyro data
 

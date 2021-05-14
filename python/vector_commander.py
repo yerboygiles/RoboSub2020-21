@@ -1,18 +1,18 @@
 #!python3
 # Author: Theodor Giles
 # Created: 11/22/20
-# Last Edited 11/22/20
+# Last Edited 5/14/21
 # Description:
 # This program manages the commands/movement/physical control of the RoboSub V1
 
 import time
-import random
+# import random
 import math
 import serial
 import bno055_data
 import phidget9dof_data
 import gyro_data_merger
-from threading import Thread
+# from threading import Thread
 
 # ROBOSUB
 A_TARGET = 1
@@ -22,6 +22,7 @@ A_GYRO = 3
 MAX_THROTTLE = 15
 
 GENERAL_THROTTLE = 17.5
+
 
 class MovementCommander:
 
@@ -92,6 +93,12 @@ class MovementCommander:
         # it.
         # advanced: these commands are much more complicated, will need to
         # develop pathing and a lot of vision/gyro/position integration
+        self.BASIC_MOVEMENT_COMMANDS = [
+            "FORWARDS",
+            "BACKWARDS",
+            "LEFT",
+            "RIGHT"
+        ]
         self.ADVANCED_MOVEMENT_COMMANDS = [
             "LOG START POINT",
             "RETURN TO START",
@@ -122,6 +129,15 @@ class MovementCommander:
         self.TargetList = []
         print("MovementCommander initialized...")
 
+    def BasicWithTime(self, supplemental):
+        DrivingWithTime = True
+        while DrivingWithTime:
+            DrivingWithTime = (time.perf_counter() - self.InitialTime) < supplemental
+            self.TradeWithArduino()
+
+    def BasicLinear(self, supplemental):
+        pass
+
     def BasicVectoring(self, supplemental):
         Vectoring = True
         i = 0
@@ -130,7 +146,7 @@ class MovementCommander:
             print("SuppParse: ", SuppParse)
             if i == 0:
                 self.YawOffset = float(SuppParse)
-                print("YawOffset: ", self.YawOffset)
+                # print("YawOffset: ", self.YawOffset)
             if i == 1:
                 self.PitchOffset = float(SuppParse)
             if i == 2:
@@ -189,6 +205,15 @@ class MovementCommander:
                         self.SuppCommand = commandParsed
                     j = j + 1
                 print("Main: ", self.MainCommand, ", Supplementary: ", self.SuppCommand)
+                for basiccommand in self.BASIC_MOVEMENT_COMMANDS:
+                    i = 0
+                    if self.MainCommand == basiccommand:
+                        self.InitialTime = time.perf_counter()
+                        if self.UsingGyro:
+                            self.BasicLinear(self.SuppCommand)
+                        else:
+                            self.BasicWithTime(self.SuppCommand)
+                    i += 2
                 for advancedcommand in self.ADVANCED_MOVEMENT_COMMANDS:
                     i = 0
                     if self.MainCommand == advancedcommand:
@@ -275,6 +300,17 @@ class MovementCommander:
     def CalculatePID(self):
         pass
 
+    def UpdateThrustersB(self):
+        self.ThrusterBL.SetSpeedPID(self.PowerLB)
+        self.ThrusterFL.SetSpeedPID(self.PowerLF)
+        self.ThrusterBR.SetSpeedPID(self.PowerRB)
+        self.ThrusterFR.SetSpeedPID(self.PowerRF)
+
+        self.ThrusterLB.SetSpeedPID(self.PowerBL)
+        self.ThrusterRB.SetSpeedPID(self.PowerBR)
+        self.ThrusterLF.SetSpeedPID(self.PowerFL)
+        self.ThrusterRF.SetSpeedPID(self.PowerFR)
+
     def UpdateThrusters(self):
         self.ThrusterBL.SetSpeedPID(self.PowerLB, yawpid=self.Gyro_hive.getYawPID())
         self.ThrusterFL.SetSpeedPID(self.PowerLF, yawpid=self.Gyro_hive.getYawPID())
@@ -300,11 +336,11 @@ class MovementCommander:
         # self.Gyro.UpdatePosition()
         # print(self.Gyro.getPosition())
         self.Gyro_hive.CalculateError(self.YawOffset,
-                                 self.PitchOffset,
-                                 self.RollOffset,
-                                 self.NorthOffset,
-                                 self.EastOffset,
-                                 self.DownOffset)
+                                      self.PitchOffset,
+                                      self.RollOffset,
+                                      self.NorthOffset,
+                                      self.EastOffset,
+                                      self.DownOffset)
         self.Gyro_hive.PID()
 
     def BrakeAllThrusters(self):

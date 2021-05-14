@@ -1,3 +1,14 @@
+/*!python3
+    Author: Theodor Giles
+    Created: 7/15/20
+    Last Edited 5/14/21
+    Description:
+    File to be sent to the arduino mega.
+    Manages all arduino functions, including
+    communication, servo/thruster driving,
+    and gyroscope communication
+*/
+
 #include <Servo.h>
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
