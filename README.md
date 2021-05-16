@@ -1,5 +1,6 @@
 Welcome to the README for the Oregon Tech RoboSub Software
 Written By: Theodor Giles
+**Currently outdated, some is still correct, but not all**
 
 I will go into detail on how to: 
 
