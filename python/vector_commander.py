@@ -3,7 +3,8 @@
 # Created: 11/22/20
 # Last Edited 5/14/21
 # Description:
-# This program manages the commands/movement/physical control of the RoboSub V1
+# This program manages the commands/movement/physical
+# control of the RoboSub V2, 2020-21
 
 import time
 # import random
