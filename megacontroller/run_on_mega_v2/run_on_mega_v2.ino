@@ -1,11 +1,11 @@
 /*!python3
     Author: Theodor Giles
-    Created: 7/15/20
-    Last Edited 5/14/21
+    Created: 5/15/15
+    Last Edited 5/15/21
     Description:
     File to be sent to the arduino mega.
     Manages all arduino functions, including
-    communication, servo/thruster driving,
+    communication, arm/thruster driving,
     and gyroscope communication
 */
 
