@@ -244,6 +244,7 @@ class MovementCommander:
         self.serial.write(whattosend.encode('utf-8'))
 
     def TradeWithArduino(self):
+        self.UpdateThrusters()
         outdata = ""
         if self.secondSetTrade:
             outdata += str(self.ThrusterBL.name)
@@ -283,7 +284,6 @@ class MovementCommander:
             self.serial.write(outdata.encode('utf-8'))
         self.secondSetTrade = not self.secondSetTrade
         self.UpdateGyro()
-        self.UpdateThrusters()
 
     def CheckIfPositionDone(self, threshold=3, timethreshold=5):
         self.PositionRunning = True

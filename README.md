@@ -2,20 +2,20 @@ Welcome to the README for the Oregon Tech RoboSub Software
 
 Written By: Theodor Giles
 
-**Currently outdated, some is still correct, but not all**
+***Last Officially Updated On: May 21st, 2021***. 
 
-I will go into detail on how to: 
-
-1. **Recreate the hardware we work with**
-
-2. **The software requirements for the said environment**
-
-3. **The programming structure of how I control the sub** 
+   This is all subject to constant change, probably not full systemic changes. There will be 
+   random commits from dispersed work from me and other members at 
+   varying rates.
 
 
-I am trying to structure the control system in such a way that the application and code are easily manageable through separate systems that can operate independently of one another to particular extents, so whoever uses the code and system can test and run the sub with ease!
+I will go into detail on the following: 
 
-Of course, this is all subject to change. ***I am writing this sentence on August 5th, 2020***. 
+1. **Hardware/Embedded Environment, Organization, and Cooperation**
+
+
+2. **Software Environment, Structure, and Cooperation**
+
 
 ***I. Hardware Environment:***
 
@@ -27,29 +27,60 @@ Our RoboSub hardware currently consists of-
 
 **Basic ESCs** - (From BlueRobotics) 
 
-**Raspberry Pi 3B+/4B+** - (Most new-ish Pis will work, as long as it is capable enough to run certain vision code and varying processor-heavy programs)
+**Raspberry Pi 3B+/4B+** - Mission Control, Vision, Data Processing
 
-   The Raspberry Pi doesn't require too much configuration, but there still is some. First, run "sudo raspi-config" in the terminal, and enable VNC, serial communication under interfacing options (but disable the "shell" whatever option"), and whatever other settings you'd like. I like to have the Pi boot to the desktop. See if you can figure that out. If you would like to interface with Pi from your own computer without having to have it connected to a monitor, keyboard, and mouse, then install VNC-viewer. There are some very easy instructions online. 
-"Installing VNC viewer on Rpi", or something like that.
+   
 
-**9 DOF Sensor (BN055, etc.)** - (For gyro/positioning/accelerometer)
+**9 DOF Sensor - BN055, PhidgetSpatial 1042_0** - Gyro, Magnometer, Accelerometer
 
-   The PixHawk is an annoying little board, whereas it requires some extra setup that is somewhat intuitive. On your own computer, you must install a program called QGroundControl in order to upload the necessary firmware to it via USB between your computer and the PixHawk. It should walk you through it, but the button to mess with the settings is accessible through the top left icons, where a gear should show up after some finagling. From there, the firmware tab opens, and you should be able to upload the ArduSub firmware. After it is done uploading, it will ask you to do some calibration. Follow the instructions, and orient the board in the ways shown. After everything is calibrated, you're good to go. 
+   The Arduino requires the run_on_mega_v2.ino uploaded to it, either 
+   through the Rpi or another computer. This lets it communicate via 
+   serial with the rPi so we can send specific commands between the two
+   boards. Currently, the rPi polls the Arduino for Gyro data, and also 
+   sends stop/start signals to hard reset/initialize the thrusters. It 
+   also can request setting changes on the arduino for certain values, 
+   such as max power, but more options are to come in the future for
+   most anything that will need during-mission tuning. It can also send
+   coordinates for the left/right robotic arms to set their endpoints
+   to, as well as opening/closing the grippers(hands). 
+   
 
-**Arduino Mega** - (For thruster PWM control)
+**Arduino Mega** - Hardpoint Control, Sensor Interpretation, Communication
 
-   The Arduino requires the ServoFirmata.ino uploaded to it, either through the Rpi or another computer. This lets it communicate via serial with the Rpi so we can send commands for it to drive the PWM pins to the thrusters. The ServoFirmata.ino is in the examples/firmata folder that comes with the basic Arduino IDE. Upload the program to the Arduino. I do this occasionally just in case as well, so if there are any problems with communicating with the Arduino, try reuploading the ServoFirmata file. Yes, I know we're driving ESCs with our Arduino, but Servos work on the same PWM code, so it lines up very nicely. Don't worry. 
+   The Arduino requires the run_on_mega_v2.ino uploaded to it, either 
+   through the Rpi or another computer. This lets it communicate via 
+   serial with the rPi so we can send specific commands between the two
+   boards. Currently, the rPi polls the Arduino for Gyro data, and also 
+   sends stop/start signals to hard reset/initialize the thrusters. It 
+   also can request setting changes on the arduino for certain values, 
+   such as max power, but more options are to come in the future for
+   most anything that will need during-mission tuning. It can also send
+   coordinates for the left/right robotic arms to set their endpoints
+   to, as well as opening/closing the grippers(hands). 
 
-**Wiring** - 
+**Electrical Management/Organization** - 
 
-   The Raspberry Pi is the brains of the entire operation, so most everything has a line to it. The Arduino is connected by USB to the Raspberry Pi and doesn't take any external voltage because all it is doing is simple PWM signals that don't require any extra power. The PixHawk is connected to the Raspberry Pi via USB as well, but if you would like to use the different wiring setups it uses, feel welcome to try. I did not have the best of luck with it. 
+   The Raspberry Pi is the brains of the entire operation, so most 
+   everything has a line to it. The Arduino is connected directly with 
+   tx/rx wires between the  the 
+   Raspberry Pi and doesn't take any external voltage because all it is 
+   doing is simple PWM signals that don't require any extra power. The 
+   PixHawk is connected to the Raspberry Pi via USB as well, but if you 
+   would like to use the different wiring setups it uses, feel welcome 
+   to try. I did not have the best of luck with it. 
 
 
 ***II. Software Environment***
 
-   Pretty much all of the code is written in Python, so it is pretty proficient at handling lots of advanced computation, organization, and interfacing with other things, even hardware. I have the program set up in a sort of tree that flows upward from a starting program to another program, to another program, and branches out to other hardware and software based on what is required/asked of the program.
+   Pretty much all of the code is written in Python, so it is pretty 
+   proficient at handling lots of advanced computation, organization, and 
+   interfacing with other things, even hardware. I have the program set up 
+   in a sort of tree that flows upward from a starting program to another 
+   program, to another program, and branches out to other hardware and 
+   software based on what is required/asked of the program.
    
-   The libraries we use are specified in the get_pi_requirements.sh, but I will also list them here.
+   The libraries we use are specified in the get_pi_requirements.sh, but I 
+   will also list them here.
    PyFirmata - (arduino communication
    Dronekit - (pixhawk communication)
    Tensorflow - (AI development and interpretation)
@@ -57,11 +88,20 @@ Our RoboSub hardware currently consists of-
    PyGame - (simulation)
    PyOpenGL - (simulation)
    
-   The top-most program of our custom application is technically "*START_SUB.py*", but can also be initialized by "*button_listener.py*", a script that is supposed to listen for a button press on the Raspberry Pi. This would be used when we don't have access to a wired connection from the Sub to a computer, but I mainly implemented it because I thought it would be cool to have a button and buzzer.
+   The top-most program of our custom application is technically 
+   "*START_SUB.py*", but can also be initialized by "*button_listener.py*", a 
+   script that is supposed to listen for a button press on the Raspberry Pi. 
+   This would be used when we don't have access to a wired connection from the
+   Sub to a computer, but I mainly implemented it because I thought it would 
+   be cool to have a button+buzzer.
 
    **START_SUB** - 
 
-   This is the most simple program in the entire application, but you can also control the use of the Pixhawk and/or implemented vision processing. 
+   This is the most simple program in the entire application, but you can also 
+   change arguments to modify the mission and it's requirements, such as 
+   removing the missions ability to use the gyro, vision systems, etc. to test
+   specific functions and systems in order to troubleshoot and ensure lower
+   level functionality. 
 
 ```
 #!python
@@ -71,8 +111,14 @@ Our RoboSub hardware currently consists of-
     Mission.terminate()
 ```
 
-*TaskIO* is the 2nd-highest program, which is initialized with *mission.txt*, a basic text file consisting of the commands the Sub will run, and they are formatted to a certain standard, which I will go into detail later. The first boolean argument determines if we are using our vision processing algorithms/AIs, the second determines the use of the PixHawk and Gyro, but I may omit the ability to not use the PixHawk soon because of how important the gyro data is to the navigation of the RoboSub. 
-*get_tasks()* manages the *mission.txt* file and sends it to the corresponding classes and subsystems.
+*TaskIO* is the 2nd-highest program, which is initialized with *mission.txt*, 
+a basic text file consisting of the commands the Sub will run, and they are 
+formatted to a certain standard, which I will go into detail later. The first 
+boolean argument determines if we are using our vision processing algorithms/AIs, 
+the second determines the use of the PixHawk and Gyro, but I may omit the ability 
+to not use the PixHawk soon because of how important the gyro data is to the 
+navigation of the RoboSub. *get_tasks()* manages the *mission.txt* file and sends
+it to the corresponding classes and subsystems.
 
    **task_io_lib_v2** -
 

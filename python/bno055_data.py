@@ -99,6 +99,7 @@ class BN055:
     def UpdateGyro(self):
         self.serial.write("GYRO".encode('utf-8'))
         i = 0
+        time.sleep(0.01)
         # print("Updating...")
         line = str(self.serial.readline()).strip("'").split(':')
         for ColonParse in line:
@@ -117,7 +118,9 @@ class BN055:
 
     # parse position object data from pixhawk, can then pass to other programs
     def UpdatePosition(self):
+        self.serial.write("POS".encode('utf-8'))
         i = 0
+        time.sleep(0.01)
         line = str(self.serial.readline()).strip("'").split(':')
         for ColonParse in line:
             if ColonParse is not None:
