@@ -19,31 +19,8 @@ I will go into detail on the following:
 
 ***I. Hardware Environment:***
 
-Our RoboSub hardware currently consists of-
 
-**Boards/Electronics** - 
-
-**T200 Thrusters** - (Newest from BlueRobotics, we have 8)
-
-**Basic ESCs** - (From BlueRobotics) 
-
-**Raspberry Pi 3B+/4B+** - Mission Control, Vision, Data Processing
-
-   
-
-**9 DOF Sensor - BN055, PhidgetSpatial 1042_0** - Gyro, Magnometer, Accelerometer
-
-   The Arduino requires the run_on_mega_v2.ino uploaded to it, either 
-   through the Rpi or another computer. This lets it communicate via 
-   serial with the rPi so we can send specific commands between the two
-   boards. Currently, the rPi polls the Arduino for Gyro data, and also 
-   sends stop/start signals to hard reset/initialize the thrusters. It 
-   also can request setting changes on the arduino for certain values, 
-   such as max power, but more options are to come in the future for
-   most anything that will need during-mission tuning. It can also send
-   coordinates for the left/right robotic arms to set their endpoints
-   to, as well as opening/closing the grippers(hands). 
-   
+**T200 Thrusters + Basic ESCs (BlueRobotics)** - 
 
 **Arduino Mega** - Hardpoint Control, Sensor Interpretation, Communication
 
@@ -57,6 +34,30 @@ Our RoboSub hardware currently consists of-
    most anything that will need during-mission tuning. It can also send
    coordinates for the left/right robotic arms to set their endpoints
    to, as well as opening/closing the grippers(hands). 
+
+
+**Raspberry Pi 3B+/4B+** - Mission Control, Vision, Logging, Data Management/Processing
+
+   The rPi is running a much larger system than the Arduino, currently
+   through Python, but our Software member Tyler Lucas is working on 
+   the eventual transition to C/C++. This will make the current code 
+   even lower-impact, but the Python application works great for now.
+   The rPi communicates with the Arduino, stereo cameras, and an IMU.
+   
+
+**9 DOF Sensor - BN055, PhidgetSpatial 1042_0** - Gyro, Magnometer, Accelerometer
+
+   We are currently using two separate IMUs, the PhidgetSpatial 1042_0, 
+   and the generic adafruit BN055. The BN055 has been giving us '*good 
+   enough*' data, but the PhidgetSpatial is meant to be the main IMU, 
+   as it's more reliable, has its own API, and was more expensive. The 
+   code running on the sub has the ability to use either independently,
+   error check between two BN055s, or manage a queen/drone system between
+   the PhidgetSpatial and the BN055s. As the Arduino manages BN055 data 
+   interpretation, the rPi manages the PhidgetSpatial, so if one board 
+   goes down or has issue communicating with its connected IMU, there
+   are "backup plans" embedded into the mission control.
+   
 
 **Electrical Management/Organization** - 
 

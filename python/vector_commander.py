@@ -30,13 +30,19 @@ class MovementCommander:
     # initialize everything to supposed starting position
     def __init__(self, usingvision=False, usinggyro=False, usingsim=False, resetheadingoncmd=False):
         # setting up board serial port
+        print("Waiting 8 for Arduino...")
+        time.sleep(8)
         print("Communicating with Arduino and it's peripherals...")
         self.UsingGyro = usinggyro
         self.serial = serial.Serial('/dev/ttyAMA0', 115200)
         if self.UsingGyro:
+            self.SendToArduino("IMU")
             self.Gyro_drone1 = bno055_data.BN055(self.serial)
             self.Gyro_queen = phidget9dof_data.Phidget9dof()
             self.Gyro_hive = gyro_data_merger.GyroMerger(self.Gyro_queen, self.Gyro_drone1)
+        else:
+            self.SendToArduino("NOIMU")
+
         if resetheadingoncmd:
             self.YawOffset = self.Gyro_hive.StartingGyro[0]
             self.ResetHeadingOnCMD = resetheadingoncmd
@@ -229,6 +235,7 @@ class MovementCommander:
         # if(self.Gyro.getYaw() < 0):
         self.GyroRunning = True
         integer = 0
+        self.UpdateGyro()
         if (abs(self.Gyro_hive.getYaw() - abs(self.YawOffset)) < threshold) and (
                 abs(self.Gyro_hive.getPitch() - abs(self.PitchOffset)) < threshold) and (
                 abs(self.Gyro_hive.getRoll() - abs(self.RollOffset)) < threshold):
@@ -283,7 +290,6 @@ class MovementCommander:
             outdata += "\n"
             self.serial.write(outdata.encode('utf-8'))
         self.secondSetTrade = not self.secondSetTrade
-        self.UpdateGyro()
 
     def CheckIfPositionDone(self, threshold=3, timethreshold=5):
         self.PositionRunning = True
@@ -332,17 +338,16 @@ class MovementCommander:
                                     pitchpid=-self.Gyro_hive.getPitchPID())
 
     def UpdateGyro(self):
-        self.Gyro_hive.UpdateGyro()
-        # print(self.Gyro.getGyro())
-        # self.Gyro.UpdatePosition()
-        # print(self.Gyro.getPosition())
-        self.Gyro_hive.CalculateError(self.YawOffset,
-                                      self.PitchOffset,
-                                      self.RollOffset,
-                                      self.NorthOffset,
-                                      self.EastOffset,
-                                      self.DownOffset)
-        self.Gyro_hive.PID()
+        if self.UsingGyro:
+            self.Gyro_hive.UpdateGyro()
+            # print(self.Gyro.getGyro())
+            self.Gyro_hive.CalculateError(self.YawOffset,
+                                          self.PitchOffset,
+                                          self.RollOffset,
+                                          self.NorthOffset,
+                                          self.EastOffset,
+                                          self.DownOffset)
+            self.Gyro_hive.PID()
 
     def BrakeAllThrusters(self):
         # horizontal

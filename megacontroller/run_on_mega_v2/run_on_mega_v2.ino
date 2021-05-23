@@ -50,6 +50,8 @@ double ACCEL_POS_TRANSITION = 0.5 * ACCEL_VEL_TRANSITION * ACCEL_VEL_TRANSITION;
 double DEG_2_RAD = 0.01745329251; //trig functions require radians, BNO055 outputs degrees
 
 Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28);
+bool initbno = false;
+bool usingbno = false;
 
 byte LBpin = 2; //left back
 byte LFpin = 3; //left front
@@ -220,11 +222,26 @@ void setup() {
   updateThrusters(0);  // send "stop"/voltage off signal to ESC.
   Serial.println("Orientation Sensor Test."); Serial.println("");
   /* Initialise the sensor */
-  if(!bno.begin()){
-    /* There was a problem detecting the BNO055 ... check your connections */
-    Serial1.print("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
-    Serial.print("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
-    while(1);
+  while(!initbno){
+    if(Serial1.available() > 0){ 
+      strinput = Serial1.readStringUntil('\n');
+      if (strinput.compareTo("IMU")==0){
+        initbno = true;
+        usingbno = true;
+      }
+      if (strinput.compareTo("NOIMU")==0){
+        initbno = true;
+        usingbno = false;
+      }
+      if(initbno){
+        if(!bno.begin()){
+          /* There was a problem detecting the BNO055 ... check your connections */
+          Serial1.print("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
+          Serial.print("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
+          while(1);
+        }
+      }
+    } 
   }
   Serial.println("Calibration post start:");
   displayCalStatus();
