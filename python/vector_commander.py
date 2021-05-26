@@ -72,6 +72,10 @@ class MovementCommander:
         else:
             print("MovementCommander is not using Telemetry...")
         # thruster hardpoint classes
+        # 'ventral' are the central, vertically oriented thrusters
+        # for roll/pitch and ascent/descent
+        # 'lateral' are the outer, 45 deg. oriented thrusters for
+        # yaw/turning and strafe movement
         self.VentralThrusterLB = ThrusterDriver("LB")  # left back
         self.VentralThrusterLF = ThrusterDriver("LF")  # left front
         self.VentralThrusterRB = ThrusterDriver("RB")  # right back
