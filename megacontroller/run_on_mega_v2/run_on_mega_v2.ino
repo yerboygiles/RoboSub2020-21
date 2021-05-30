@@ -1,7 +1,7 @@
 /*!python3
     Author: Theodor Giles
     Created: 5/15/15
-    Last Edited 5/15/21
+    Last Edited 5/30/21
     Description:
     File to be sent to the arduino mega.
     Manages all arduino functions, including
@@ -220,7 +220,7 @@ void setup() {
   delay(7000); // delay to allow the ESC to recognize the stopped signal.
   Serial1.println("Thrusters armed, resetting to stop.");
   updateThrusters(0);  // send "stop"/voltage off signal to ESC.
-  Serial.println("Orientation Sensor Test."); Serial.println("");
+  Serial.println("Initializing IMU, NOIMU or IMU?"); Serial.println("");
   /* Initialise the sensor */
   while(!initbno){
     if(Serial1.available() > 0){ 
@@ -235,22 +235,34 @@ void setup() {
       }
       if(initbno){
         if(!bno.begin()){
-          /* There was a problem detecting the BNO055 ... check your connections */
-          Serial1.print("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
-          Serial.print("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
-          while(1);
+          if(usingbno){
+            /* There was a problem detecting the BNO055 ... check your connections */
+            Serial1.println("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
+            Serial.println("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
+            while(1);
+          }
+        }else{
+            Serial1.println("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
+            Serial.println("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
         }
+        if(!usingbno){
+            Serial1.println("Not using IMU.");
+            Serial.println("Not using IMU.");
+          }
       }
     } 
   }
-  Serial.println("Calibration post start:");
-  displayCalStatus();
-  
-  /* Use external crystal for better accuracy */
-  bno.setExtCrystalUse(true);
-   
-  /* Display some basic information on this sensor */
-  displaySensorDetails();
+  if(usingbno){
+    Serial.println("Calibration post start:");
+    displayCalStatus();
+    
+    /* Use external crystal for better accuracy */
+    bno.setExtCrystalUse(true);
+     
+    /* Display some basic information on this sensor */
+    displaySensorDetails();
+  }
+  Serial.println("Setup over. Running...");
   secondSet = false;
   
 
@@ -369,44 +381,47 @@ void PointArm_R(float x_input, float y_input){
 
 void loop() {
   // put your main code here, to run repeatedly:
-  
   sensors_event_t orientationData , angVelData , linearAccelData;
-  bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
-  bno.getEvent(&angVelData, Adafruit_BNO055::VECTOR_GYROSCOPE);
-  bno.getEvent(&linearAccelData, Adafruit_BNO055::VECTOR_LINEARACCEL);
-
-  xPos = xPos + ACCEL_POS_TRANSITION * linearAccelData.acceleration.x;
-  yPos = yPos + ACCEL_POS_TRANSITION * linearAccelData.acceleration.y;
-  zPos = zPos + ACCEL_POS_TRANSITION * linearAccelData.acceleration.z;
+  if(usingbno){
+    bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
+    bno.getEvent(&angVelData, Adafruit_BNO055::VECTOR_GYROSCOPE);
+    bno.getEvent(&linearAccelData, Adafruit_BNO055::VECTOR_LINEARACCEL);
   
-  headingVel = ACCEL_VEL_TRANSITION * linearAccelData.acceleration.x / 
-               cos(DEG_2_RAD * orientationData.orientation.x);
+    xPos = xPos + ACCEL_POS_TRANSITION * linearAccelData.acceleration.x;
+    yPos = yPos + ACCEL_POS_TRANSITION * linearAccelData.acceleration.y;
+    zPos = zPos + ACCEL_POS_TRANSITION * linearAccelData.acceleration.z;
+    
+    headingVel = ACCEL_VEL_TRANSITION * linearAccelData.acceleration.x / 
+                 cos(DEG_2_RAD * orientationData.orientation.x);
+  }
   thrustersValid = true;
   //printEvent(&orientationData, Serial);
   //printEvent(&linearAccelData, Serial);
   //displayCalStatus();
   
   int j = 0;
-  while(GyroCalib < 3){
-    delay(1000);
-    displayCalStatus();
-    Serial.print("Calibrating... On run: ");
-    Serial.print(j);
-    Serial.println(". Wait 1.");
-    j = j + 1;
-    printEvent(&orientationData, Serial);
-    xOffset = orientationData.orientation.x;
-    yOffset = orientationData.orientation.y;
-    zOffset = orientationData.orientation.z;
-  if (!(GyroCalib < 3)){
-    updateThrusters(1500); // send "arm" signal to ESCs
-    delay(3000);
-    updateThrusters(1600); // low forwards signal to ESCs
-    delay(2000);
-    updateThrusters(1500); // send "arm" signal to ESCs, there's an issue with prolonged 
-    delay(3000);
-    updateThrusters(0); // send "dead" signal to ESCs, theres an issue after prolonged time 
-                        // with random high movement here
+  if(usingbno){
+    while(GyroCalib < 3){
+      delay(1000);
+      displayCalStatus();
+      Serial.print("Calibrating... On run: ");
+      Serial.print(j);
+      Serial.println(". Wait 1.");
+      j = j + 1;
+      printEvent(&orientationData, Serial);
+      xOffset = orientationData.orientation.x;
+      yOffset = orientationData.orientation.y;
+      zOffset = orientationData.orientation.z;
+    if (!(GyroCalib < 3)){
+      updateThrusters(1500); // send "arm" signal to ESCs
+      delay(3000);
+      updateThrusters(1600); // low forwards signal to ESCs
+      delay(2000);
+      updateThrusters(1500); // send "arm" signal to ESCs, there's an issue with prolonged 
+      delay(3000);
+      updateThrusters(0); // send "dead" signal to ESCs, theres an issue after prolonged time 
+                          // with random high movement here
+      }
     }
   }
   if(Serial1.available() > 0){ 
