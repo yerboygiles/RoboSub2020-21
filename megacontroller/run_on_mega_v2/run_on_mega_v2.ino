@@ -308,7 +308,7 @@ void printEvent(sensors_event_t* event, Stream &serial) {
     serial.print(":x:");
     if(x > 180) {
       serial.print((x - 180));
-    } else if (x <= 180) {se
+    } else if (x <= 180) {
       serial.print(-(x + 180));
     }
     serial.print(":y:");
