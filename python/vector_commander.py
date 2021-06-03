@@ -38,11 +38,13 @@ class MovementCommander:
         self.UsingGyro = usinggyro
         self.serial = serial.Serial('/dev/ttyAMA0', 115200)
         if self.UsingGyro:
+            print("Sending IMU")
             self.SendToArduino("IMU")
             self.Gyro_drone1 = bno055_data.BN055(self.serial)
             self.Gyro_queen = phidget9dof_data.Phidget9dof()
             self.Gyro_hive = gyro_data_merger.GyroMerger(self.Gyro_queen, self.Gyro_drone1)
         else:
+            print("Sending NOIMU")
             self.SendToArduino("NOIMU")
 
         if resetheadingoncmd:
@@ -144,10 +146,12 @@ class MovementCommander:
 
     def BasicDriverControl(self):
         DrivingWithControl = True
+        print("Driver Control!!")
         while DrivingWithControl:
             DriveCommand = remote_control.get_wasdqerv_directional()
             self.BasicDirectionPower(DriveCommand)
-            DrivingWithControl = DriveCommand is not -1
+            DrivingWithControl = DriveCommand is not -2
+            self.TradeWithArduino()
 
     def BasicWithTime(self, supplemental):
         DrivingWithTime = True
@@ -206,12 +210,15 @@ class MovementCommander:
         # going through commands in parsed list
         self.CommandIndex = 0
         # tell arduino to arm motors
+        self.SendToArduino("STOP")
+        print("Stopping arduino... Wait 3.")
+        time.sleep(3)
         self.SendToArduino("START")
         print("Starting arduino... Wait 3.")
         time.sleep(3)
         self.SendToArduino("MAXPOWER:20")
         print("Sending settings... Wait 3.")
-        time.sleep(1)
+        time.sleep(3)
         try:
             for command in commandlist:
                 print("VectorCommander running: ", command)
@@ -219,6 +226,7 @@ class MovementCommander:
                 self.SuppCommand = ""
                 j = 0
                 for commandParsed in str(command).split(','):
+                    commandParsed.strip()
                     if j == 0:
                         self.MainCommand = commandParsed
                     if j == 1:
@@ -226,8 +234,10 @@ class MovementCommander:
                     j = j + 1
                 print("Main: ", self.MainCommand, ", Supplementary: ", self.SuppCommand)
                 if self.MainCommand == "REMOTE":
+                    print("Driver Control With:")
+                    self.BasicDriverControl()
                     if self.SuppCommand == "KEYBOARD":
-                        self.BasicDriverControl()
+                        print("Keyboard!")
                     else:
                         pass
                 else:

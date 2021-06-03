@@ -2,7 +2,7 @@ Welcome to the README for the Oregon Tech RoboSub Software
 
 Written By: Theodor Giles
 
-***Last Officially Updated On: May 21st, 2021***. 
+***Last Officially Updated On: June 2nd, 2021***. 
 
    This is all subject to constant change, probably not full systemic changes. There will be 
    random commits from dispersed work from me and other members at 
@@ -62,39 +62,42 @@ I will go into detail on the following:
 **Electrical Management/Organization** - 
 
    The Raspberry Pi is the brains of the entire operation, so most 
-   everything has a line to it. The Arduino is connected directly with 
-   tx/rx wires between the  the 
-   Raspberry Pi and doesn't take any external voltage because all it is 
-   doing is simple PWM signals that don't require any extra power. The 
-   PixHawk is connected to the Raspberry Pi via USB as well, but if you 
-   would like to use the different wiring setups it uses, feel welcome 
-   to try. I did not have the best of luck with it. 
+   everything will have/has a line to it. The Arduino is connected directly 
+   with tx/rx wires between the Raspberry Pi. There are two voltage 
+   regulators that manage 5V source going to both the Raspberry Pi and Arduino,
+   respectively
 
 
 ***II. Software Environment***
 
-   Pretty much all of the code is written in Python, so it is pretty 
+   Pretty much all the application code is written in Python, so it is pretty 
    proficient at handling lots of advanced computation, organization, and 
    interfacing with other things, even hardware. I have the program set up 
    in a sort of tree that flows upward from a starting program to another 
    program, to another program, and branches out to other hardware and 
-   software based on what is required/asked of the program.
+   software based on what is required/asked of the program. This is meant to
+   provide a platform for future development that will eventually allow for
+   multi-platform applications. Pretty much, I want the code to be reconfigurable
+   to the extent that it can run on anything, and do anything(within reason). 
+   Future projects in AUVSIR won't be just limited to submarines and rovers,
+   so I want this application to be very adaptable in the future, and is also
+   being worked on to translate from Python -> C++ so it can possibly run on 
+   even more hardware.
    
-   The libraries we use are specified in the get_pi_requirements.sh, but I 
-   will also list them here.
-   PyFirmata - (arduino communication
-   Dronekit - (pixhawk communication)
+
+   Phidget22.Phidget - (Phidget22 gyro libraries)
+
    Tensorflow - (AI development and interpretation)
+
    OpenCV - (vision processing)
+
    PyGame - (simulation)
+
    PyOpenGL - (simulation)
    
    The top-most program of our custom application is technically 
-   "*START_SUB.py*", but can also be initialized by "*button_listener.py*", a 
-   script that is supposed to listen for a button press on the Raspberry Pi. 
-   This would be used when we don't have access to a wired connection from the
-   Sub to a computer, but I mainly implemented it because I thought it would 
-   be cool to have a button+buzzer.
+   "*START_SUB.py*", but we mainly initialize using "*START_SUB_WITH_TIME.py*",
+   which is meant to give a modifiable countdown to the start, with a beeper. 
 
    **START_SUB** - 
 
@@ -106,10 +109,15 @@ I will go into detail on the following:
 
 ```
 #!python
+def run():
+    from task_io_lib_v2 import TaskIO
 
-    Mission = TaskIO("mission.txt", False, True)
+    print(' ===== ROBOSUB v2.0 ===== ')
+
+    Mission = TaskIO("mission.txt", False, False, False)
     Mission.get_tasks()
     Mission.terminate()
+    print("done")
 ```
 
 *TaskIO* is the 2nd-highest program, which is initialized with *mission.txt*, 
@@ -123,23 +131,26 @@ it to the corresponding classes and subsystems.
 
    **task_io_lib_v2** -
 
-   This program is the first level at which commands are taken in, and controls the peripherals such as the Pixhawk and Vision Processing. It also initializes the *MovementCommander*.
+   This program is the first level at which commands are taken in, and controls the 
+   peripherals such as the gyro, vision systems, and simulation. It also initializes 
+   the used *MovementCommander*.
 
 ```
 #!python
 class TaskIO:
     # init
-    def __init__(self, filename, usingvision, usingpixhawk):
-        self.UsingVision = usingvision
-        self.UsingPixhawk = usingpixhawk
+        def __init__(self, filename, usingvision, usinggyro, usingsim):
         self.Filename = filename
         self.UsingVision = usingvision
+        self.UsingGyro = usinggyro
+        self.UsingSim = usingsim
         self.Active = False
-        self.Movement = MovementCommander(self.UsingVision, self.UsingPixhawk)
+        self.Movement = MovementCommander(self.UsingVision, self.UsingGyro, self.UsingSim)
         self.CommandList = []
 ```
 
-   This is the init, and as you can see, it takes two boolean arguments if the user wants to use the vision processing and/or the PixHawk. 
+   This is the init, and as you can see, it takes two boolean arguments if the user 
+   wants to use the vision processing, simulation, and/or gyro. 
 
 ```
 #!python
@@ -148,76 +159,87 @@ class TaskIO:
         # Testing
         self.Commands = open(self.Filename)
         for CommandLine in self.Commands:
-            for ParsedCommand in CommandLine.strip().split(','):
-                self.CommandList.append(ParsedCommand)
+            self.CommandList.append(CommandLine)
         print("Commands read...")
         self.Commands.close()
         print("Commands: ", self.CommandList)
         self.Movement.receiveCommands(self.CommandList)
         self.active = False
+
 ```
 
-   This function of TaskIO is basically a run() function, but it also puts all the "commands" from the *mission.txt* into a list so we don't have to parse the text file in the MovementCommander(*self.Movement*) as well.
+   This function of TaskIO is basically a run() function, but it also puts all the 
+   "commands" from the *mission.txt* into a list so we don't have to parse the text 
+   file in the MovementCommander(*self.Movement*) as well.
    
    **movement_commander_v4** - 
 
-   This program is the main meat and bones of the navigation, the command interpreting, thruster driving, data collecting, and I think it's the longest program in the application by lines of code. 
-   I feel like I don't need to explain the *__init__()* of MovementCommander, because it is self-explanatory, initializing each class and hardware we want it to.
+   This program is the main meat and bones of the navigation, the command interpreting, 
+   thruster driving, data collecting, and I think it's the longest program in the 
+   application by lines of code. I feel like I don't need to explain the *__init__()* 
+   of MovementCommander, because it is self-explanatory, initializing each class and 
+   hardware we want it to.
 
 ```
 #!python
 # handles list of commands
-    def receiveCommands(self, commandlist):
-        self.WaitForSupplementary = False
-        self.TargetOrPosition = 0
-        for command in commandlist:
-            print("Command data read: ", command)
-            self.InitialTime = time.perf_counter()
-            self.ElapsedTime = 0.0
-            self.UpdateThrustersPID()
-            self.IsMoveCommand = False
-            self.Basic = False
-            self.Advanced = False
+     def receiveCommands(self, commandlist):
+        # going through commands in parsed list
+        self.CommandIndex = 0
+        # tell arduino to arm motors
+        self.SendToArduino("STOP")
+        print("Stopping arduino... Wait 3.")
+        time.sleep(3)
+        self.SendToArduino("START")
+        print("Starting arduino... Wait 3.")
+        time.sleep(3)
+        self.SendToArduino("MAXPOWER:20")
+        print("Sending settings... Wait 3.")
+        time.sleep(3)
+        try:
+            for command in commandlist:
+                print("VectorCommander running: ", command)
+                self.MainCommand = ""
+                self.SuppCommand = ""
+                j = 0
+                for commandParsed in str(command).split(','):
+                    commandParsed.strip()
+                    if j == 0:
+                        self.MainCommand = commandParsed
+                    if j == 1:
+                        self.SuppCommand = commandParsed
+                    j = j + 1
+                print("Main: ", self.MainCommand, ", Supplementary: ", self.SuppCommand)
 ```
-
-   This initial bit of code is iterating through each command that was saved from the *mission.txt* and starts the process of determining what the command means/what it is supposed to accomplish. 
-    *WaitForSupplementary* is a variable dedicated to commands that require an argument after it, and *TargetOrPosition* is a variable meant for determining the sub-command of WaitForSupplementary, whether it be a target(*A_TARGET*), a gyro matrix(*A_GYRO*), or a position matrix(*A_POSITION*). 
-    The *InitialTime* and *ElapsedTime* variables are meant for basic time-based commands, or for when we get to the desired matrix, it waits a certain amount of time before starting the next command after reaching the desired position. 
+   The first part of receiveCommands() involves sending initialization codes to the Arduino,
+   arming it, and also managing settings like MaxPower(limits motor thrust for safety, etc.).
 
 ```
 #!python
-if self.WaitForSupplementary:
-    trupleindex = 0
-    for value in command.split('x'):
-        if trupleindex == 0:
-            self.YawOffset = int(value)
-        elif trupleindex == 1:
-            self.PitchOffset = int(value)
-        elif trupleindex == 2:
-            self.RollOffset = int(value)
-        trupleindex += 1
-    self.IsMoveCommand = True
-for i in range(len(self.BASIC_MOVEMENT_COMMANDS)):
-    if command == self.BASIC_MOVEMENT_COMMANDS[i]:
-        self.IsMoveCommand = True
-        self.Basic = True
-        self.CommandIndex = i
-for i in range(len(self.ADVANCED_MOVEMENT_COMMANDS)):
-    if command == self.ADVANCED_MOVEMENT_COMMANDS[i]:
-        self.IsMoveCommand = True
-        self.Advanced = True
-        self.CommandIndex = i
-for i in range(len(self.TARGET_MOVEMENT_COMMANDS)):
-    if command == self.TARGET_MOVEMENT_COMMANDS[i]:
-        self.WaitForSupplementary = True
-        self.TargetOrPosition = A_TARGET
-        self.CommandIndex = i
-if command == self.GYRO_TO:
-    self.WaitForSupplementary = True
-    self.TargetOrPosition = A_GYRO
-if command == self.POSITION_TO:
-    self.WaitForSupplementary = True
-    self.TargetOrPosition = A_POSITION
+                if self.MainCommand == "REMOTE":
+                    print("Driver Control With:")
+                    self.BasicDriverControl()
+                    if self.SuppCommand == "KEYBOARD":
+                        print("Keyboard!")
+                    else:
+                        pass
+                else:
+                    for basiccommand in self.BASIC_MOVEMENT_COMMANDS:
+                        i = 0
+                        if self.MainCommand == basiccommand:
+                            self.InitialTime = time.perf_counter()
+                            if self.UsingGyro:
+                                self.BasicLinear(self.SuppCommand)
+                            else:
+                                self.BasicWithTime(self.SuppCommand)
+                        i += 2
+                    for advancedcommand in self.ADVANCED_MOVEMENT_COMMANDS:
+                        i = 0
+                        if self.MainCommand == advancedcommand:
+                            self.InitialTime = time.perf_counter()
+                            self.BasicVectoring(self.SuppCommand)
+                        i += 2
+                    self.CommandIndex += 1
 ```
 
 
