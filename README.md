@@ -2,7 +2,10 @@ Welcome to the README for the Oregon Tech RoboSub Software
 
 Written By: Theodor Giles
 
-***Last Officially Updated On: June 2nd, 2021***. 
+***Last Officially Updated On: June 16nd, 2021
+   
+   This readme is not finished, reading the full
+   Application will teach you much better***. 
 
    This is all subject to constant change, probably not full systemic changes. There will be 
    random commits from dispersed work from me and other members at 
