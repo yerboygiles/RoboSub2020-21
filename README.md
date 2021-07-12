@@ -4,7 +4,7 @@ Written By: Theodor Giles
 
 ***Last Officially Updated On: June 2nd, 2021***. 
 
-   This is all subject to constant change, probably not full systemic changes. There will be 
+   This is all subject to constant change. There will be 
    random commits from dispersed work from me and other members at 
    varying rates.
 

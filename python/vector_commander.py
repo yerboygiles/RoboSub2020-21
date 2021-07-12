@@ -61,9 +61,11 @@ class MovementCommander:
         self.UsingVision = usingvision
         self.UsingSim = usingsim
         if self.UsingVision:
-            import Theos_Really_Good_Detection_Script as obj_det
-            self.VisionAI = obj_det.Detector("TensorFlow_Graph/Tflite", False)
-            print("MovementCommander is using Vision AI...")
+            # import Theos_Really_Good_Detection_Script as obj_det
+            # self.VisionAI = obj_det.Detector("TensorFlow_Graph/Tflite", False)
+            # print("MovementCommander is using Vision AI...")
+            import JayCeOpenCV as vision
+            self.Vision = vision()
         else:
             print("MovementCommander is not using Vision AI...")
 
@@ -121,7 +123,7 @@ class MovementCommander:
             "POSITION TO"
         ]
         self.TARGET_MOVEMENT_COMMANDS = [
-            "MOVE",
+            "MOVE TO",
             "RAM",
             "FIRE AT",
             "FOLLOW"
@@ -185,6 +187,38 @@ class MovementCommander:
 
     def AdvancedVectoring(self):
         pass
+
+    def TargetMovement(self, supplemental):
+        while self.ScanForTarget(supplemental):
+
+    def ScanForTarget(self, target):
+        scanstate = False
+        state1_timer = 0
+        state2_timer = 0
+        confidence_timer = 0
+        self.TargetLocked = False
+        if not self.Vision.sees(target):
+            self.MovingToConfidence = False
+            if scanstate:  # pause and look
+                state1_timer = time.perf_counter()
+                self.BasicDirectionPower(-2)
+                if state1_timer - state2_timer > 5:
+                    scanstate = False
+            elif not scanstate:  # increment and look, 6 = right, 5 = left
+                state2_timer = time.perf_counter()
+                self.BasicDirectionPower(6)
+                if state2_timer - state1_timer > 3:
+                    scanstate = True
+        else:
+            if not self.MovingToConfidence:
+                confidence_timer = time.perf_counter()
+                self.MovingToConfidence = True
+            else:
+                if time.perf_counter() - confidence_timer > 5:
+                    return False
+                self.BasicDirectionPower(-2)
+        self.UpdateThrusters()
+        return True
 
     # Concept code, basically for checking if the Sub has already seen the detected object.
     def IsTargetInMemory(self, label, x, y, z):
@@ -255,6 +289,12 @@ class MovementCommander:
                         if self.MainCommand == advancedcommand:
                             self.InitialTime = time.perf_counter()
                             self.BasicVectoring(self.SuppCommand)
+                        i += 2
+                    for targetcommand in self.TARGET_MOVEMENT_COMMANDS:
+                        i = 0
+                        if self.MainCommand == targetcommand:
+                            self.InitialTime = time.perf_counter()
+                            self.Target_Movement(self.SuppCommand)
                         i += 2
                     self.CommandIndex += 1
         except:
