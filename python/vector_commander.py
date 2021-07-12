@@ -13,6 +13,7 @@ import serial
 import bno055_data
 import phidget9dof_data
 import gyro_data_merger
+import vision_v1
 import remote_control
 
 # from threading import Thread
@@ -64,8 +65,7 @@ class MovementCommander:
             # import Theos_Really_Good_Detection_Script as obj_det
             # self.VisionAI = obj_det.Detector("TensorFlow_Graph/Tflite", False)
             # print("MovementCommander is using Vision AI...")
-            import JayCeOpenCV as vision
-            self.Vision = vision()
+            self.Vision = vision_v1.vision()
         else:
             print("MovementCommander is not using Vision AI...")
 
@@ -189,7 +189,11 @@ class MovementCommander:
         pass
 
     def TargetMovement(self, supplemental):
+        print("Scanning for target...")
         while self.ScanForTarget(supplemental):
+            pass
+        targetoffset = [0, 0]
+        if self.MainCommand == self.TARGET_MOVEMENT_COMMANDS[0]: #move to
 
     def ScanForTarget(self, target):
         scanstate = False
@@ -468,6 +472,25 @@ class MovementCommander:
                                            rollpid=self.Gyro_hive.getRollPID(),
                                            pitchpid=-self.Gyro_hive.getPitchPID())
 
+    def UpdateThrustersVisionPID(self, targoffset):
+
+        self.LateralThrusterLB.SetSpeedPID(self.LateralPowerLB, yawpid=self.vision)
+        self.LateralThrusterLF.SetSpeedPID(self.LateralPowerLF, yawpid=self.Gyro_hive.getYawPID())
+        self.LateralThrusterRB.SetSpeedPID(self.LateralPowerRB, yawpid=-self.Gyro_hive.getYawPID())
+        self.LateralThrusterRF.SetSpeedPID(self.LateralPowerRF, yawpid=-self.Gyro_hive.getYawPID())
+
+        self.VentralThrusterLB.SetSpeedPID(self.VentralPowerLB,
+                                           rollpid=self.Gyro_hive.getRollPID(),
+                                           pitchpid=-self.Gyro_hive.getPitchPID())
+        self.VentralThrusterRB.SetSpeedPID(self.VentralPowerRB,
+                                           rollpid=-self.Gyro_hive.getRollPID(),
+                                           pitchpid=-self.Gyro_hive.getPitchPID())
+        self.VentralThrusterLF.SetSpeedPID(self.VentralPowerLF,
+                                           rollpid=-self.Gyro_hive.getRollPID(),
+                                           pitchpid=-self.Gyro_hive.getPitchPID())
+        self.VentralThrusterRF.SetSpeedPID(self.VentralPowerRF,
+                                           rollpid=self.Gyro_hive.getRollPID(),
+                                           pitchpid=-self.Gyro_hive.getPitchPID())
     def UpdateGyro(self):
         if self.UsingGyro:
             self.Gyro_hive.UpdateGyro()
