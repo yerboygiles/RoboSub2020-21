@@ -1,11 +1,10 @@
 #!python3
 # Author: Theodor Giles
 # Created: 7/15/20
-# Last Edited 5/7/21
+# Last Edited 7/13/21
 # Description:
-# Retrieves data from the phidgetspatial 9dof,
+# Node for data from the phidgetspatial 9dof,
 # gyro/accelerometer and positioning data
-# other cool tasks it can do
 
 from Phidget22.Phidget import *
 from Phidget22.Devices.Spatial import *

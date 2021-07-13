@@ -1,1 +1,1 @@
-REMOTE, KEYBOARD
+MOVE TO, blue_buoy

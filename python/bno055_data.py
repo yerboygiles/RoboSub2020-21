@@ -3,18 +3,14 @@
 # Created: 7/15/20
 # Last Edited 8/12/20
 # Description:
-# gets data from the simulated/non-simulated pixhawk for attitude, positioning, and maybe some
-# other cool tasks it can do
+# node for moving around data from the
+# bno055 for attitude and positioning
 
 import serial
 import time
 import re
 import math
 
-# sitl is basically a simulation, can be "ran" from any computer kinda? I will figure out a way to make an incorporated
-# 3d python sim for managing all this at some point
-# sitl = dronekit_sitl.start_default()  # (sitl.start)
-# connection_string = sitl.connection_string()
 GYRO: int = 0
 POSITION: int = 1
 YAW: int = 0
