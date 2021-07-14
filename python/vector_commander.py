@@ -155,20 +155,20 @@ class MovementCommander:
             DrivingWithControl = DriveCommand is not -2
             self.TradeWithArduino()
 
-    def BasicWithTime(self, supplemental):
+    def BasicWithTime(self):
         DrivingWithTime = True
         while DrivingWithTime:
-            DrivingWithTime = (time.perf_counter() - self.InitialTime) < supplemental
+            DrivingWithTime = (time.perf_counter() - self.InitialTime) < int(self.SuppCommand)
             self.TradeWithArduino()
 
-    def BasicLinear(self, supplemental):
+    def BasicLinear(self):
         pass
 
-    def BasicVectoring(self, supplemental):
+    def BasicVectoring(self):
         Vectoring = True
         i = 0
-        print("Supplemental: ", supplemental)
-        for SuppParse in str(supplemental).split(':'):
+        print("Supplemental: ", self.SuppCommand)
+        for SuppParse in str(self.SuppCommand).split(':'):
             print("SuppParse: ", SuppParse)
             if i == 0:
                 self.YawOffset = float(SuppParse)
@@ -188,18 +188,32 @@ class MovementCommander:
     def AdvancedVectoring(self):
         pass
 
-    def TargetMovement(self, supplemental):
+    def TargetMovement(self):
         print("Scanning for target...")
-        while self.ScanForTarget(supplemental):
+        while self.SearchAndLockTarget(self.SuppCommand):
             pass
         engaging = True
+        ramtime = 0
         while engaging:
-            if self.MainCommand == self.TARGET_MOVEMENT_COMMANDS[0]:  # move to
+            # 0- "MOVE TO",
+            # 1- "RAM",
+            # 2- "FIRE AT",
+            # 3- "FOLLOW"
+            self.UpdateThrustersVisionPID(self.Vision.getOffset())
+            if self.CommandIndex == 0:
                 self.UpdateThrustersVisionPID(self.Vision.getOffset())
-                if self.Vision.getDistance() < int(supplemental):
+                if self.Vision.getDistance() < int(self.SuppCommand):
                     engaging = False
+            elif self.CommandIndex == 1:
+                if self.Vision.getDistance() < int(self.SuppCommand):
+                    self.BasicDirectionPower(1)
+                    if time.perf_counter() - ramtime > (int(self.SuppCommand) / 4):
+                        engaging = False
+                else:
+                    ramtime = time.perf_counter()
+                    self.UpdateThrustersVisionPID(self.Vision.getOffset())
 
-    def ScanForTarget(self, target):
+    def SearchAndLockTarget(self, target):
         scanstate = False
         state1_timer = 0
         state2_timer = 0
@@ -212,7 +226,7 @@ class MovementCommander:
                 self.BasicDirectionPower(-2)
                 if state1_timer - state2_timer > 5:
                     scanstate = False
-            elif not scanstate:  # increment and look, 6 = right, 5 = left
+            else:  # increment and look, 6 = right, 5 = left
                 state2_timer = time.perf_counter()
                 self.BasicDirectionPower(6)
                 if state2_timer - state1_timer > 3:
