@@ -1,6 +1,7 @@
 #!python3
 # Author: Theodor Giles
 # Created: 7/13/21
+# Last Edited 7/14/21
 # Description:
 # node for moving around data from the vision
 # processing system
@@ -43,10 +44,23 @@ class vision:
     Y_I = 0.0
     Y_D = 0.0
 
-    def __init__(self):
-        pass
+    Captures = []
 
-    def color_masking(self):
+    rightcamindex = 0
+    leftcamindex = 0
+
+    def __init__(self, cameras, right, left):
+        self.cameras = cameras
+        self.rightcamindex = right
+        self.leftcamindex = left
+        i = 0
+        while i < cameras:
+            self.Captures.append(cv2.VideoCapture(i))  # change this to capture from camera
+            i = i + 1
+
+    def getImg(self):
+        self.ret, self.img = self.cap.read()
+    def color_masking(self, ret, img, beallfancy=False):
         # red values 179, 255,255
         # min 105 0 0
         hmin = 105
@@ -61,36 +75,83 @@ class vision:
         x = y = 30
         w = h = 400
 
-        cap = cv2.VideoCapture(file)  # change this to capture from camra
-        while True:
-            ret, img = cap.read()
-            if (ret):
-                hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-                lower = np.array([hmin, smin, vmin])
-                upper = np.array([hmax, smax, vmax])
-                mask = cv2.inRange(hsv, lower, upper)
-                # masked = cv2.bitwise_and(hsv,hsv,mask=mask)
-                con = cv2.findContours(mask.copy(),
-                                       cv2.RETR_EXTERNAL,
-                                       cv2.CHAIN_APPROX_SIMPLE)[-2]
-                if (len(con) > 0):
+        # contours
+        con = False
+
+        if (ret):
+            hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+            lower = np.array([hmin, smin, vmin])
+            upper = np.array([hmax, smax, vmax])
+            mask = cv2.inRange(hsv, lower, upper)
+            # masked = cv2.bitwise_and(hsv,hsv,mask=mask)
+            con = cv2.findContours(mask.copy(),
+                                   cv2.RETR_EXTERNAL,
+                                   cv2.CHAIN_APPROX_SIMPLE)[-2]
+            while beallfancy:
+                if len(con) > 0:
                     i = 0
                     for c in con:
                         area = cv2.contourArea(c)
                         if area > 20:
                             (x, y, w, h) = cv2.boundingRect(c)
-                            cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 255), 2)
+                            cv2.rectangle(self.img, (x, y), (x + w, y + h), (0, 255, 255), 2)
                             # the center fo the screen will half the resoltion hight and half the width
                             # then just store the x and y components
                             print('element:', i)
                             print("x:", x)
-                cv2.imshow("result", img)
+                cv2.imshow("result", self.img)
                 cv2.imshow("masked", mask)
                 # trak bars for other stuff
                 if cv2.waitKey(1) == ord('q'):
                     break
-            else:
-                cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+        else:
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+        return con
+
+    # this should create a second object confirmer that can also use the depth map
+    # by creating midpoints from both left/right contour coordinates
+    def StereoGetTarget(self, pxlim=10):
+        # x offset, y offset, width of target, height of target, area of target
+        # x y w h a
+        SeenObjects = []
+        ret_left, img_left = self.Captures[self.leftcamindex].read()
+        ret_right, img_right = self.Captures[self.leftcamindex].read()
+        ContoursL = self.color_masking(ret_left, img_left)
+        ContoursR = self.color_masking(ret_right, img_right)
+        if ContoursL and ContoursR:
+            for leftcontour in ContoursL:
+                leftcontour_area = cv2.contourArea(leftcontour)
+                for rightcontour in ContoursR:
+                    rightcontour_area = cv2.contourArea(rightcontour)
+                    # area check
+                    if abs(leftcontour_area - rightcontour_area) < pxlim:
+                        (leftcontour_x, leftcontour_y, leftcontour_w, leftcontour_h) = cv2.boundingRect(leftcontour)
+                        (rightcontour_x, rightcontour_y, rightcontour_w, rightcontour_h) = cv2.boundingRect(rightcontour)
+                        # width check
+                        if abs(leftcontour_w - rightcontour_w) < pxlim:
+                            # height check
+                            if abs(leftcontour_h - rightcontour_h) < pxlim:
+                                error = (abs(leftcontour_h - rightcontour_h)
+                                         + abs(leftcontour_w - rightcontour_w)
+                                         + abs(leftcontour_area - rightcontour_area)) / 3
+                                SeenObjects.append([(leftcontour_x + rightcontour_x) / 2,
+                                                    (leftcontour_y + rightcontour_y) / 2,
+                                                    (leftcontour_w + rightcontour_w) / 2,
+                                                    (leftcontour_h + rightcontour_h) / 2,
+                                                    (leftcontour_area + rightcontour_area) / 2
+                                                    ])
+        i = 0
+        returnindex = 0
+        for target in SeenObjects:
+            if i + 1 < len(SeenObjects):
+                if target[5] > SeenObjects[i + 1][5]:
+                    returnindex = i + 1
+            i = i + 1
+
+        stereo = cv2.StereoBM_create(numDisparities=16, blockSize=15)
+        cv2.rectangle(stereo, (SeenObjects[0], SeenObjects[1]), (SeenObjects[0] + SeenObjects[2], SeenObjects[1] + SeenObjects[3]), (0, 255, 255), 2)
+        disparity = stereo.compute(img_left, img_right)
+        return SeenObjects[returnindex]
 
     def getXOffset(self):
         return self.XOffset
@@ -149,6 +210,12 @@ class vision:
     # end command/vehicle running
     def Terminate(self):
         pass
+
+
+def runwithoutfullsys():
+    Vision = vision()
+    while True:
+        Vision.StereoGetTarget(12)
 # This is a sample Python script.
 # Press Shift+F10 to execute it or replace it with your code.
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
@@ -185,7 +252,7 @@ class vision:
 # cv2.createTrackbar("hue min",name_bars,130,179,on_change_hmin)
 # cv2.createTrackbar("sat min",name_bars,166,255,on_change_smin)
 # cv2.createTrackbar("val min",name_bars,0,255,on_change_vmin)
-#track bars
+# track bars
 # cv2.namedWindow("parms")
 # cv2.createTrackbar("thresh1","parms",88,255,empty)
 # cv2.createTrackbar("thresh2","parms",20,255,empty)
