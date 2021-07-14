@@ -1,3 +1,10 @@
+#!python3
+# Author: Theodor Giles
+# Created: 7/14/21
+# Last Edited 7/14/21
+# Description:
+# stereo depth map testing
+
 import numpy as np
 import cv2 as cv
 # from matplotlib import pyplot as plt

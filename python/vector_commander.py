@@ -112,9 +112,14 @@ class MovementCommander:
         # develop pathing and a lot of vision/gyro/position integration
         self.BASIC_MOVEMENT_COMMANDS = [
             "FORWARDS",
+            "STRAFE LEFT",
             "BACKWARDS",
-            "LEFT",
-            "RIGHT"
+            "STRAFE RIGHT",
+            "TURN LEFT",
+            "TURN RIGHT",
+            "ASCEND",
+            "DESCEND",
+            "PAUSE",
         ]
         self.ADVANCED_MOVEMENT_COMMANDS = [
             "LOG START POINT",
@@ -127,10 +132,6 @@ class MovementCommander:
             "RAM",
             "FIRE AT",
             "FOLLOW"
-        ]
-        # currently only for firing torpedoes, maybe a claw action later on?
-        self.SUPPLEMENTARY_COMMANDS = [
-            "FIRE TORPEDO AT"
         ]
         # name of object to target sent to TF/openCV AI
         self.TO_TARGET = ""
@@ -159,10 +160,11 @@ class MovementCommander:
         DrivingWithTime = True
         while DrivingWithTime:
             DrivingWithTime = (time.perf_counter() - self.InitialTime) < int(self.SuppCommand)
-            self.TradeWithArduino()
+            self.BasicDirectionPower(self.CommandIndex)
 
     def BasicLinear(self):
-        pass
+        while time.perf_counter() - self.InitialTime < int(self.SuppCommand):
+            self.BasicDirectionPower(self.CommandIndex)
 
     def BasicVectoring(self):
         Vectoring = True

@@ -14,7 +14,7 @@ def get_wasdqerv_directional() -> int:
     # STRAFING LEFT
     elif directval == "a" or directval == "A":
         directval = 2
-    # REVERSING
+    # MOVING BACKWARDS
     elif directval == "s" or directval == "S":
         directval = 3
     # STRAFING RIGHT

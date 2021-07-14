@@ -9,7 +9,11 @@ import serial
 import time
 import re
 import math
-
+import os
+import argparse
+import cv2
+import numpy as np
+from math import *
 
 X: int = 0
 Y: int = 1
@@ -41,6 +45,52 @@ class vision:
 
     def __init__(self):
         pass
+
+    def color_masking(self):
+        # red values 179, 255,255
+        # min 105 0 0
+        hmin = 105
+        smin = 0
+        vmin = 0
+
+        hmax = 179
+        smax = 255
+        vmax = 255
+
+        # masking bounds
+        x = y = 30
+        w = h = 400
+
+        cap = cv2.VideoCapture(file)  # change this to capture from camra
+        while True:
+            ret, img = cap.read()
+            if (ret):
+                hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+                lower = np.array([hmin, smin, vmin])
+                upper = np.array([hmax, smax, vmax])
+                mask = cv2.inRange(hsv, lower, upper)
+                # masked = cv2.bitwise_and(hsv,hsv,mask=mask)
+                con = cv2.findContours(mask.copy(),
+                                       cv2.RETR_EXTERNAL,
+                                       cv2.CHAIN_APPROX_SIMPLE)[-2]
+                if (len(con) > 0):
+                    i = 0
+                    for c in con:
+                        area = cv2.contourArea(c)
+                        if area > 20:
+                            (x, y, w, h) = cv2.boundingRect(c)
+                            cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 255), 2)
+                            # the center fo the screen will half the resoltion hight and half the width
+                            # then just store the x and y components
+                            print('element:', i)
+                            print("x:", x)
+                cv2.imshow("result", img)
+                cv2.imshow("masked", mask)
+                # trak bars for other stuff
+                if cv2.waitKey(1) == ord('q'):
+                    break
+            else:
+                cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
     def getXOffset(self):
         return self.XOffset
@@ -99,3 +149,54 @@ class vision:
     # end command/vehicle running
     def Terminate(self):
         pass
+# This is a sample Python script.
+# Press Shift+F10 to execute it or replace it with your code.
+# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+#
+# def on_change_hmax(value):
+#     global hmax
+#     hmax = value
+#     print (hmax)
+# def on_change_smax(value):
+#     global smax
+#     smax = value
+#     print (smax)
+# def on_change_vmax(value):
+#     global vmax
+#     vmax = value
+#     print (vmax)
+# def on_change_hmin(value):
+#     global hmin
+#     hmin= value
+#     print (hmin)
+# def on_change_smin(value):
+#     global smin
+#     smin = value
+#     print (smin)
+# def on_change_vmin(value):
+#     global vmin
+#     vmin = value
+#     print (vmin)
+# name_bars = 'trackbar window'
+# cv2.namedWindow('trackbar window',cv2.WINDOW_NORMAL)
+# cv2.createTrackbar("hue max",name_bars,179,179,on_change_hmax)
+# cv2.createTrackbar("sat max",name_bars,255,255,on_change_smax)
+# cv2.createTrackbar("val max",name_bars,255,255,on_change_vmax)
+# cv2.createTrackbar("hue min",name_bars,130,179,on_change_hmin)
+# cv2.createTrackbar("sat min",name_bars,166,255,on_change_smin)
+# cv2.createTrackbar("val min",name_bars,0,255,on_change_vmin)
+#track bars
+# cv2.namedWindow("parms")
+# cv2.createTrackbar("thresh1","parms",88,255,empty)
+# cv2.createTrackbar("thresh2","parms",20,255,empty)
+# cv2.createTrackbar("thresh3","parms",88,255,empty)
+# cv2.createTrackbar("thresh4","parms",20,255,empty)
+
+# Press the green button in the gutter to run the script.
+# if __name__ == '__main__':
+#     #find_closest_corner()
+#     #find_contour('dasub.mp4')
+#      color_masking('dasub2.mp4')
+#     #split_vid('dasub.mp4')
+#     # show_img_func('fortesting.jpg')
+# See PyCharm help at https://www.jetbrains.com/help/pycharm/
