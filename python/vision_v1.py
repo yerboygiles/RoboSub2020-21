@@ -1,7 +1,7 @@
 #!python3
 # Author: Theodor Giles
 # Created: 7/13/21
-# Last Edited 7/14/21
+# Last Edited 7/15/21
 # Description:
 # node for moving around data from the vision
 # processing system
@@ -15,6 +15,7 @@ import argparse
 import cv2
 import numpy as np
 from math import *
+from matplotlib import pyplot as plt
 
 X: int = 0
 Y: int = 1
@@ -58,9 +59,11 @@ class vision:
             self.Captures.append(cv2.VideoCapture(i))  # change this to capture from camera
             i = i + 1
 
-    def getImg(self):
-        self.ret, self.img = self.cap.read()
-    def color_masking(self, ret, img, beallfancy=False):
+    def getImg(self, camindex):
+        self.ret, self.img = self.Captures[camindex].read()
+        return self.ret, self.img
+
+    def getColorMaskContours(self, ret, img, beallfancy=False):
         # red values 179, 255,255
         # min 105 0 0
         hmin = 105
@@ -108,16 +111,28 @@ class vision:
             self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
         return con
 
+    def StereoTarget(self, showim):
+        ret_left, img_left = self.Captures[self.leftcamindex].read()
+        ret_right, img_right = self.Captures[self.leftcamindex].read()
+        gray_left = cv2.cvtColor(img_left, cv2.COLOR_BGR2GRAY)
+        gray_right = cv2.cvtColor(img_right, cv2.COLOR_BGR2GRAY)
+        stereo = cv2.StereoBM_create(numDisparities=16, blockSize=15)
+        disparity = stereo.compute(gray_left, gray_right)
+        if showim:
+            plt.imshow(disparity, 'gray')
+            plt.show()
+        return disparity
+
     # this should create a second object confirmer that can also use the depth map
     # by creating midpoints from both left/right contour coordinates
-    def StereoGetTarget(self, pxlim=10):
+    def ColorStereoTarget(self, pxlim=10):
         # x offset, y offset, width of target, height of target, area of target
         # x y w h a
         SeenObjects = []
         ret_left, img_left = self.Captures[self.leftcamindex].read()
         ret_right, img_right = self.Captures[self.leftcamindex].read()
-        ContoursL = self.color_masking(ret_left, img_left)
-        ContoursR = self.color_masking(ret_right, img_right)
+        ContoursL = self.getColorMaskContours(ret_left, img_left)
+        ContoursR = self.getColorMaskContours(ret_right, img_right)
         if ContoursL and ContoursR:
             for leftcontour in ContoursL:
                 leftcontour_area = cv2.contourArea(leftcontour)
@@ -126,7 +141,8 @@ class vision:
                     # area check
                     if abs(leftcontour_area - rightcontour_area) < pxlim:
                         (leftcontour_x, leftcontour_y, leftcontour_w, leftcontour_h) = cv2.boundingRect(leftcontour)
-                        (rightcontour_x, rightcontour_y, rightcontour_w, rightcontour_h) = cv2.boundingRect(rightcontour)
+                        (rightcontour_x, rightcontour_y, rightcontour_w, rightcontour_h) = cv2.boundingRect(
+                            rightcontour)
                         # width check
                         if abs(leftcontour_w - rightcontour_w) < pxlim:
                             # height check
@@ -149,7 +165,8 @@ class vision:
             i = i + 1
 
         stereo = cv2.StereoBM_create(numDisparities=16, blockSize=15)
-        cv2.rectangle(stereo, (SeenObjects[0], SeenObjects[1]), (SeenObjects[0] + SeenObjects[2], SeenObjects[1] + SeenObjects[3]), (0, 255, 255), 2)
+        cv2.rectangle(stereo, (SeenObjects[0], SeenObjects[1]),
+                      (SeenObjects[0] + SeenObjects[2], SeenObjects[1] + SeenObjects[3]), (0, 255, 255), 2)
         disparity = stereo.compute(img_left, img_right)
         return SeenObjects[returnindex]
 
@@ -211,11 +228,8 @@ class vision:
     def Terminate(self):
         pass
 
-
-def runwithoutfullsys():
-    Vision = vision()
-    while True:
-        Vision.StereoGetTarget(12)
+    # while True:
+    #     Vision.StereoGetTarget(12)
 # This is a sample Python script.
 # Press Shift+F10 to execute it or replace it with your code.
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
