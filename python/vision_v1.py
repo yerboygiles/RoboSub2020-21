@@ -108,7 +108,8 @@ class vision:
                 if cv2.waitKey(1) == ord('q'):
                     break
         return con
-    def seesColorMask(self, ret, img):
+
+    def seesTargetColorMask(self, target):
         # red values 179, 255,255
         # min 105 0 0
         hmin = 105
@@ -126,8 +127,10 @@ class vision:
         # contours
         seen = False
 
-        if ret:
-            hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        self.getImg(self.rightcamindex)
+
+        if self.ret:
+            hsv = cv2.cvtColor(self.img, cv2.COLOR_BGR2HSV)
             lower = np.array([hmin, smin, vmin])
             upper = np.array([hmax, smax, vmax])
             mask = cv2.inRange(hsv, lower, upper)

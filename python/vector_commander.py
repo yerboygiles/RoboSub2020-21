@@ -192,9 +192,9 @@ class MovementCommander:
 
     def TargetMovement(self):
         print("Scanning for target...")
-        while self.SearchAndLockTarget(self.SuppCommand):
-            pass
-        engaging = True
+        # while self.SearchAndLockTarget(self.SuppCommand):
+        #     pass
+        engaging = False
         ramtime = 0
         while engaging:
             self.Vision.StereoTarget(False)
@@ -220,7 +220,7 @@ class MovementCommander:
         state2_timer = 0
         confidence_timer = 0
         self.TargetLocked = False
-        if not self.Vision.sees(target):
+        if not self.Vision.seesTargetColorMask(target):
             self.MovingToConfidence = False
             if scanstate:  # pause and look
                 state1_timer = time.perf_counter()
@@ -298,6 +298,7 @@ class MovementCommander:
                     else:
                         pass
                 else:
+                    print("Searching basic movement...")
                     for basiccommand in self.BASIC_MOVEMENT_COMMANDS:
                         i = 0
                         if self.MainCommand == basiccommand:
@@ -309,6 +310,7 @@ class MovementCommander:
                         i += 2
                         self.CommandIndex += 1
                     self.CommandIndex = 0
+                    print("Searching advanced movement...")
                     for advancedcommand in self.ADVANCED_MOVEMENT_COMMANDS:
                         i = 0
                         if self.MainCommand == advancedcommand:
@@ -317,6 +319,7 @@ class MovementCommander:
                         i += 2
                         self.CommandIndex += 1
                     self.CommandIndex = 0
+                    print("Searching target movement...")
                     for targetcommand in self.TARGET_MOVEMENT_COMMANDS:
                         i = 0
                         if self.MainCommand == targetcommand:
