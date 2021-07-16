@@ -163,8 +163,7 @@ class MovementCommander:
             self.BasicDirectionPower(self.CommandIndex)
 
     def BasicLinear(self):
-        while time.perf_counter() - self.InitialTime < int(self.SuppCommand):
-            self.BasicDirectionPower(self.CommandIndex)
+        pass
 
     def BasicVectoring(self):
         Vectoring = True
@@ -304,9 +303,9 @@ class MovementCommander:
                         if self.MainCommand == basiccommand:
                             self.InitialTime = time.perf_counter()
                             if self.UsingGyro:
-                                self.BasicLinear(self.SuppCommand)
+                                self.BasicLinear()
                             else:
-                                self.BasicWithTime(self.SuppCommand)
+                                self.BasicWithTime()
                         i += 2
                         self.CommandIndex += 1
                     self.CommandIndex = 0
@@ -315,7 +314,7 @@ class MovementCommander:
                         i = 0
                         if self.MainCommand == advancedcommand:
                             self.InitialTime = time.perf_counter()
-                            self.BasicVectoring(self.SuppCommand)
+                            self.BasicVectoring()
                         i += 2
                         self.CommandIndex += 1
                     self.CommandIndex = 0
@@ -324,7 +323,7 @@ class MovementCommander:
                         i = 0
                         if self.MainCommand == targetcommand:
                             self.InitialTime = time.perf_counter()
-                            self.TargetMovement(self.SuppCommand)
+                            self.TargetMovement()
                         i += 2
                         self.CommandIndex += 1
                     self.CommandIndex = 0
