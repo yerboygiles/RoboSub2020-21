@@ -1,7 +1,7 @@
 #!python3
 # Author: Theodor Giles
 # Created: 11/22/20
-# Last Edited 7/15/21
+# Last Edited 7/16/21
 # Description:
 # This node manages the commands/movement/physical
 # control of the RoboSub V2, 2020-21
@@ -197,15 +197,12 @@ class MovementCommander:
         engaging = True
         ramtime = 0
         while engaging:
+            self.Vision.StereoTarget(False)
             # 0- "MOVE TO",
-            # 1- "RAM",
-            # 2- "FIRE AT",
-            # 3- "FOLLOW"
-            self.UpdateThrustersVisionPID(self.Vision.getOffset())
             if self.CommandIndex == 0:
-                self.UpdateThrustersVisionPID(self.Vision.getOffset())
                 if self.Vision.getDistance() < int(self.SuppCommand):
                     engaging = False
+            # 1- "RAM",
             elif self.CommandIndex == 1:
                 if self.Vision.getDistance() < int(self.SuppCommand):
                     self.BasicDirectionPower(1)
@@ -213,7 +210,9 @@ class MovementCommander:
                         engaging = False
                 else:
                     ramtime = time.perf_counter()
-                    self.UpdateThrustersVisionPID(self.Vision.getOffset())
+            # 2- "FIRE AT",
+            # 3- "FOLLOW"
+            self.UpdateThrustersVisionPID(self.Vision.getOffset())
 
     def SearchAndLockTarget(self, target):
         scanstate = False

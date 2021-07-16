@@ -1,7 +1,7 @@
 #!python3
 # Author: Theodor Giles
 # Created: 7/13/21
-# Last Edited 7/15/21
+# Last Edited 7/16/21
 # Description:
 # node for moving around data from the vision
 # processing system
@@ -56,7 +56,7 @@ class vision:
         self.leftcamindex = left
         i = 0
         while i < cameras:
-            self.Captures.append(cv2.VideoCapture(i))  # change this to capture from camera
+            self.Captures.append(cv2.VideoCapture(i))
             i = i + 1
 
     def getImg(self, camindex):
@@ -81,7 +81,7 @@ class vision:
         # contours
         con = False
 
-        if (ret):
+        if ret:
             hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
             lower = np.array([hmin, smin, vmin])
             upper = np.array([hmax, smax, vmax])
@@ -107,9 +107,46 @@ class vision:
                 # trak bars for other stuff
                 if cv2.waitKey(1) == ord('q'):
                     break
-        else:
-            self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
         return con
+    def seesColorMask(self, ret, img):
+        # red values 179, 255,255
+        # min 105 0 0
+        hmin = 105
+        smin = 0
+        vmin = 0
+
+        hmax = 179
+        smax = 255
+        vmax = 255
+
+        # masking bounds
+        x = y = 30
+        w = h = 400
+
+        # contours
+        seen = False
+
+        if ret:
+            hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+            lower = np.array([hmin, smin, vmin])
+            upper = np.array([hmax, smax, vmax])
+            mask = cv2.inRange(hsv, lower, upper)
+            # masked = cv2.bitwise_and(hsv,hsv,mask=mask)
+            con = cv2.findContours(mask.copy(),
+                                   cv2.RETR_EXTERNAL,
+                                   cv2.CHAIN_APPROX_SIMPLE)[-2]
+            if len(con) > 0:
+                i = 0
+                for c in con:
+                    area = cv2.contourArea(c)
+                    if area > 20:
+                        (x, y, w, h) = cv2.boundingRect(c)
+                        seen = True
+                        # cv2.rectangle(self.img, (x, y), (x + w, y + h), (0, 255, 255), 2)
+                        # the center fo the screen will half the resoltion hight and half the width
+                        # then just store the x and y components
+
+        return seen
 
     def StereoTarget(self, showim):
         ret_left, img_left = self.Captures[self.leftcamindex].read()
@@ -147,14 +184,14 @@ class vision:
                         if abs(leftcontour_w - rightcontour_w) < pxlim:
                             # height check
                             if abs(leftcontour_h - rightcontour_h) < pxlim:
-                                error = (abs(leftcontour_h - rightcontour_h)
-                                         + abs(leftcontour_w - rightcontour_w)
-                                         + abs(leftcontour_area - rightcontour_area)) / 3
-                                SeenObjects.append([(leftcontour_x + rightcontour_x) / 2,
-                                                    (leftcontour_y + rightcontour_y) / 2,
-                                                    (leftcontour_w + rightcontour_w) / 2,
-                                                    (leftcontour_h + rightcontour_h) / 2,
-                                                    (leftcontour_area + rightcontour_area) / 2
+                                error = (abs(rightcontour_h)
+                                         + abs(rightcontour_w)
+                                         + abs(rightcontour_area))
+                                SeenObjects.append([abs(img_right.width / 2 - rightcontour_x),
+                                                    abs(img_right.height / 2 - rightcontour_y),
+                                                    rightcontour_w,
+                                                    rightcontour_h,
+                                                    rightcontour_area
                                                     ])
         i = 0
         returnindex = 0
@@ -164,17 +201,14 @@ class vision:
                     returnindex = i + 1
             i = i + 1
 
-        stereo = cv2.StereoBM_create(numDisparities=16, blockSize=15)
-        cv2.rectangle(stereo, (SeenObjects[0], SeenObjects[1]),
-                      (SeenObjects[0] + SeenObjects[2], SeenObjects[1] + SeenObjects[3]), (0, 255, 255), 2)
-        disparity = stereo.compute(img_left, img_right)
+        # stereo = cv2.StereoBM_create(numDisparities=16, blockSize=15)
+        # cv2.rectangle(stereo, (SeenObjects[0], SeenObjects[1]),
+        #               (SeenObjects[0] + SeenObjects[2], SeenObjects[1] + SeenObjects[3]), (0, 255, 255), 2)
+        # disparity = stereo.compute(img_left, img_right)
+
+        self.XOffset = SeenObjects[returnindex][0]
+        self.YOffset = SeenObjects[returnindex][1]
         return SeenObjects[returnindex]
-
-    def getXOffset(self):
-        return self.XOffset
-
-    def getYOffset(self):
-        return self.YOffset
 
     # req for PID calculation
     def CalculateError(self):
@@ -217,6 +251,12 @@ class vision:
 
     def getYPID(self):
         return self.Y_PID
+
+    def getXOffset(self):
+        return self.XOffset
+
+    def getYOffset(self):
+        return self.YOffset
 
     def getOffset(self):
         return [self.XOffset, self.YOffset]

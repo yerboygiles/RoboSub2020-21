@@ -1,6 +1,7 @@
 #!python3
 # Author: Theodor Giles
 # Created: 7/15/21
+# Last Edited 7/16/21
 # Description:
 # testing script for vision system
 
@@ -16,6 +17,8 @@ def runwithoutfullsys():
     Vision = vision_v1.vision(3, 1, 2)
     while True:
         Vision.StereoTarget(True)
+        print("X Offset: ", Vision.getXOffset())
+        print("Y Offset: ", Vision.getYOffset())
 
 
 runwithoutfullsys()
