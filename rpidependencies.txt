@@ -1,4 +1,5 @@
-pip3 install opencv-python 
+installs - {
+pip3 install opencv-python
 sudo apt-get remove python-opencv
 sudo apt-get install python-opencv
 sudo apt-get install libcblas-dev
@@ -10,3 +11,17 @@ sudo apt-get install libqtgui4
 sudo apt-get install libqt4-test
 sudo apt-get install libopenjp2-7
 pip3 install matplotlib
+}
+
+getting files transferred - {
+
+scp -r 'Your Path Here'\RoboSubApp2020-21 pi@raspberrypi:/home/pi/RoboSub
+
+}
+
+run mission - {
+cd RoboSub
+cd python
+python3 START_SUB_WITH_TIME.py
+
+}
