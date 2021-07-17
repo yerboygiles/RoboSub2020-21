@@ -146,6 +146,7 @@ class MovementCommander:
             "Cesar"]
         self.TargetList = []
         print("MovementCommander initialized...")
+        self.StartingTime = time.perf_counter()
 
     def BasicDriverControl(self):
         DrivingWithControl = True
@@ -540,6 +541,21 @@ class MovementCommander:
         self.VentralPowerLF = 0
 
         self.UpdateThrusters()
+
+    def PrintOutTelemetry(self):
+        print("Ventral LB: ", self.VentralThrusterLB.GetSpeed())
+        print("Ventral LF: ", self.VentralThrusterLF.GetSpeed())
+        print("Ventral RB: ", self.VentralThrusterRB.GetSpeed())
+        print("Ventral RF: ", self.VentralThrusterRF.GetSpeed())
+        print("Lateral LB: ", self.VentralThrusterLB.GetSpeed())
+        print("Lateral RB: ", self.VentralThrusterRB.GetSpeed())
+        print("Lateral RF: ", self.VentralThrusterRF.GetSpeed())
+        print("Lateral LF: ", self.VentralThrusterLF.GetSpeed())
+
+        print("Vision Offset: ", self.Vision.getOffset())
+
+        self.RunningTime = time.perf_counter() - self.StartingTime
+        print("Running Time: ", self.RunningTime)
 
     # searches for target if cannot find it
     # def SearchForTarget(self, target, repositioning=False, distancethreshold=300):
