@@ -25,7 +25,8 @@ I will go into detail on the following:
 
 **T200 Thrusters + Basic ESCs (BlueRobotics)** - 
 
-**Arduino Mega** - Hardpoint Control, Sensor Interpretation, Communication
+**Arduino Mega** - Hardpoint Control, Sensor Interpretation, 
+Communication
 
    The Arduino requires the run_on_mega_v2.ino uploaded to it, either 
    through the Rpi or another computer. This lets it communicate via 
@@ -39,7 +40,8 @@ I will go into detail on the following:
    to, as well as opening/closing the grippers(hands). 
 
 
-**Raspberry Pi 3B+/4B+** - Mission Control, Vision, Logging, Data Management/Processing
+**Raspberry Pi 3B+/4B+** - Mission Control, Vision, Logging, Data 
+Management/Processing
 
    The rPi is running a much larger system than the Arduino, currently
    through Python, but our Software member Tyler Lucas is working on 
@@ -48,7 +50,8 @@ I will go into detail on the following:
    The rPi communicates with the Arduino, stereo cameras, and an IMU.
    
 
-**9 DOF Sensor - BN055, PhidgetSpatial 1042_0** - Gyro, Magnometer, Accelerometer
+**9 DOF Sensor - BN055, PhidgetSpatial 1042_0** - Gyro, Magnometer, 
+Accelerometer
 
    We are currently using two separate IMUs, the PhidgetSpatial 1042_0, 
    and the generic adafruit BN055. The BN055 has been giving us '*good 
@@ -86,7 +89,7 @@ I will go into detail on the following:
    so I want this application to be very adaptable in the future, and is also
    being worked on to translate from Python -> C++ so it can possibly run on 
    even more hardware.
-   
+
 
    Phidget22.Phidget - (Phidget22 gyro libraries)
 
@@ -341,7 +344,12 @@ class PixHawk:
     Roll_D = 0.0
 ```
 
-All these variables are for very specific calculations, so I will walk through how it all comes together. First of all, the constants such as *GYRO: int = 0* is for accessing the Gyroscopic data from the arrays that are 2-dimensional. Gyro data is at 1st index 0, 2nd index 0->2, and position data is at 1st index 0, 2nd index 0->2. The *YAW*/*PITCH*/*ROLL* variables are for accessing the 2nd index, so I can ensure the right data goes into the right index at any given time through readability. The *Error* variables are for PID calculations, which you can read in the program. It is pretty straight forward. The other variables are easy to interpret cause their use is in their name. 
+All these variables are for very specific calculations, so I will walk 
+through how it all comes together. First of all, the constants such as 
+*GYRO: int = 0* is for accessing the Gyroscopic data from the arrays 
+that are 2-dimensional. Gyro data is at 1st index 0, 2nd index 0->2, 
+and position data is at 1st index 0, 2nd index 0->2. The *YAW, PITCH,*
+ and *ROLL* variables are for accessing the 2nd index, so I can ensure the right data goes into the right index at any given time through readability. The *Error* variables are for PID calculations, which you can read in the program. It is pretty straight forward. The other variables are easy to interpret cause their use is in their name. 
 
 
 ```
@@ -369,3 +377,31 @@ for CommaParse in str(self.vehicle.attitude).split(','):
 ```
 
 This is the code to parse the string data read from the Dronekit library that the Raspberry Pi uses to receive serial data from the Pixhawk, and because the data read back is more like readable telemetry, there is some string splitting that must occur, and the data is at certain points in the string, which is why the values are set to the converted strings when "i" is compared to a certain value in the for loop. I plan to improve this process at some point, making it faster, and I will update this Wiki accordingly.
+
+**Syntax, Naming, etc.**
+
+Currently, I use my own custom system for variable naming, syntax, etc.
+
+CamelCase is used for most Very Important Variables. Data for 
+calculation, communication, etc. Also used for more complex class 
+methods.
+
+thisCase is for basic methods like setting, getting, printing, etc.
+
+lowercase is used for variables that are unimportant, method arguments,
+or basic members. No methods.
+
+UPPER_CASE_SPACED is mainly for constants and valuable arrays, no 
+methods.
+
+i hate using single digit variables, but when I do, it signifies an index
+or counter.
+
+This_case1 signifies a piece of hardware, the type being *This* and the 
+*case1* meaning the designation + which # hardpoint it is. Example below. 
+
+```
+ if (abs(self.Gyro_hive.getYaw() - abs(self.YawOffset)) < threshold) and (
+                abs(self.Gyro_hive.getPitch() - abs(self.PitchOffset)) < threshold) and (
+                abs(self.Gyro_hive.getRoll() - abs(self.RollOffset)) < threshold):
+```

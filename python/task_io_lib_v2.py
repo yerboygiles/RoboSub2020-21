@@ -7,7 +7,7 @@
 # as well as the AI/TF/vision integration
 # Allows the movement_commander to update at all times, causing no lag for switching commands
 import time
-from vector_commander import MovementCommander
+from vector_commander import NavigationCommander
 
 
 class TaskIO:
@@ -18,7 +18,7 @@ class TaskIO:
         self.UsingGyro = usinggyro
         self.UsingSim = usingsim
         self.Active = False
-        self.Movement = MovementCommander(self.UsingVision, self.UsingGyro, self.UsingSim)
+        self.Movement = NavigationCommander(self.UsingVision, self.UsingGyro, self.UsingSim)
         self.CommandList = []
 
     # get tasks from the .txt and completes them
