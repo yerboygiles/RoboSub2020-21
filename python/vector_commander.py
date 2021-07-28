@@ -77,14 +77,14 @@ class NavigationCommander:
         # for roll/pitch and ascent/descent
         # 'lateral' are the outer, 45 deg. oriented thrusters for
         # yaw/turning and strafe movement
-        self.VentralThrusterLB = ThrusterDriver("LB")  # left back
-        self.VentralThrusterLF = ThrusterDriver("LF")  # left front
-        self.VentralThrusterRB = ThrusterDriver("RB")  # right back
-        self.VentralThrusterRF = ThrusterDriver("RF")  # right front
-        self.LateralThrusterLB = ThrusterDriver("BL")  # back left
-        self.LateralThrusterRB = ThrusterDriver("BR")  # back right
-        self.LateralThrusterLF = ThrusterDriver("FL")  # front left !
-        self.LateralThrusterRF = ThrusterDriver("FR")  # front right !
+        self.Thruster_VentralLB = ThrusterDriver("LB")  # left back
+        self.Thruster_VentralLF = ThrusterDriver("LF")  # left front
+        self.Thruster_VentralRB = ThrusterDriver("RB")  # right back
+        self.Thruster_VentralRF = ThrusterDriver("RF")  # right front
+        self.Thruster_LateralLB = ThrusterDriver("BL")  # back left
+        self.Thruster_LateralRB = ThrusterDriver("BR")  # back right
+        self.Thruster_LateralLF = ThrusterDriver("FL")  # front left !
+        self.Thruster_LateralRF = ThrusterDriver("FR")  # front right !
         # power values to set to the thruster hardpoints
         # horizontally oriented
         self.LateralPowerLB = 0
@@ -351,39 +351,39 @@ class NavigationCommander:
         self.UpdateThrusters()
         outdata = ""
         if self.secondSetTrade:
-            outdata += str(self.LateralThrusterLB.name)
+            outdata += str(self.Thruster_LateralLB.name)
             outdata += ":"
-            outdata += str(self.LateralThrusterLB.getSpeed())
+            outdata += str(self.Thruster_LateralLB.getSpeed())
             outdata += ","
-            outdata += str(self.LateralThrusterRB.name)
+            outdata += str(self.Thruster_LateralRB.name)
             outdata += ":"
-            outdata += str(self.LateralThrusterRB.getSpeed())
+            outdata += str(self.Thruster_LateralRB.getSpeed())
             outdata += ","
-            outdata += str(self.LateralThrusterLF.name)
+            outdata += str(self.Thruster_LateralLF.name)
             outdata += ":"
-            outdata += str(self.LateralThrusterLF.getSpeed())
+            outdata += str(self.Thruster_LateralLF.getSpeed())
             outdata += ","
-            outdata += str(self.LateralThrusterRF.name)
+            outdata += str(self.Thruster_LateralRF.name)
             outdata += ":"
-            outdata += str(self.LateralThrusterRF.getSpeed())
+            outdata += str(self.Thruster_LateralRF.getSpeed())
             outdata += "\n"
             self.serial.write(outdata.encode('utf-8'))
         if not self.secondSetTrade:
-            outdata += str(self.VentralThrusterLB.name)
+            outdata += str(self.Thruster_VentralLB.name)
             outdata += ":"
-            outdata += str(self.VentralThrusterLB.getSpeed())
+            outdata += str(self.Thruster_VentralLB.getSpeed())
             outdata += ","
-            outdata += str(self.VentralThrusterLF.name)
+            outdata += str(self.Thruster_VentralLF.name)
             outdata += ":"
-            outdata += str(self.VentralThrusterLF.getSpeed())
+            outdata += str(self.Thruster_VentralLF.getSpeed())
             outdata += ","
-            outdata += str(self.VentralThrusterRB.name)
+            outdata += str(self.Thruster_VentralRB.name)
             outdata += ":"
-            outdata += str(self.VentralThrusterRB.getSpeed())
+            outdata += str(self.Thruster_VentralRB.getSpeed())
             outdata += ","
-            outdata += str(self.VentralThrusterRF.name)
+            outdata += str(self.Thruster_VentralRF.name)
             outdata += ":"
-            outdata += str(self.VentralThrusterRF.getSpeed())
+            outdata += str(self.Thruster_VentralRF.getSpeed())
             outdata += "\n"
             self.serial.write(outdata.encode('utf-8'))
         self.secondSetTrade = not self.secondSetTrade
@@ -468,73 +468,73 @@ class NavigationCommander:
                 self.LateralPowerRF = 0
 
     def UpdateThrusters(self):
-        self.LateralThrusterLB.setSpeed(self.LateralPowerLB)
-        self.LateralThrusterLF.setSpeed(self.LateralPowerLF)
-        self.LateralThrusterRB.setSpeed(self.LateralPowerRB)
-        self.LateralThrusterRF.setSpeed(self.LateralPowerRF)
+        self.Thruster_LateralLB.setSpeed(self.LateralPowerLB)
+        self.Thruster_LateralLF.setSpeed(self.LateralPowerLF)
+        self.Thruster_LateralRB.setSpeed(self.LateralPowerRB)
+        self.Thruster_LateralRF.setSpeed(self.LateralPowerRF)
 
-        self.VentralThrusterLB.setSpeed(self.VentralPowerLB)
-        self.VentralThrusterRB.setSpeed(self.VentralPowerRB)
-        self.VentralThrusterLF.setSpeed(self.VentralPowerLF)
-        self.VentralThrusterRF.setSpeed(self.VentralPowerRF)
+        self.Thruster_VentralLB.setSpeed(self.VentralPowerLB)
+        self.Thruster_VentralRB.setSpeed(self.VentralPowerRB)
+        self.Thruster_VentralLF.setSpeed(self.VentralPowerLF)
+        self.Thruster_VentralRF.setSpeed(self.VentralPowerRF)
 
     def UpdateThrustersGyroVisionPID(self):
-        self.LateralThrusterLB.setSpeedPID(self.LateralPowerLB,
-                                           xpid=self.Gyro_drone1.getYawPID() + self.Vision.getXPID())
-        self.LateralThrusterLF.setSpeedPID(self.LateralPowerLF,
-                                           xpid=self.Gyro_drone1.getYawPID() + self.Vision.getXPID())
-        self.LateralThrusterRB.setSpeedPID(self.LateralPowerRB,
-                                           xpid=-self.Gyro_drone1.getYawPID() - self.Vision.getXPID())
-        self.LateralThrusterRF.setSpeedPID(self.LateralPowerRF,
-                                           xpid=-self.Gyro_drone1.getYawPID() - self.Vision.getXPID())
+        self.Thruster_LateralLB.setSpeedPID(self.LateralPowerLB,
+                                            xpid=self.Gyro_drone1.getYawPID() + self.Vision.getXPID())
+        self.Thruster_LateralLF.setSpeedPID(self.LateralPowerLF,
+                                            xpid=self.Gyro_drone1.getYawPID() + self.Vision.getXPID())
+        self.Thruster_LateralRB.setSpeedPID(self.LateralPowerRB,
+                                            xpid=-self.Gyro_drone1.getYawPID() - self.Vision.getXPID())
+        self.Thruster_LateralRF.setSpeedPID(self.LateralPowerRF,
+                                            xpid=-self.Gyro_drone1.getYawPID() - self.Vision.getXPID())
 
-        self.VentralThrusterLB.setSpeedPID(self.VentralPowerLB,
-                                           zpid=self.Gyro_drone1.getRollPID(),
-                                           ypid=self.Gyro_drone1.getPitchPID() + self.Vision.getYPID())
-        self.VentralThrusterRB.setSpeedPID(self.VentralPowerRB,
-                                           zpid=-self.Gyro_drone1.getRollPID(),
-                                           ypid=self.Gyro_drone1.getPitchPID() + self.Vision.getYPID())
-        self.VentralThrusterLF.setSpeedPID(self.VentralPowerLF,
-                                           zpid=-self.Gyro_drone1.getRollPID(),
-                                           ypid=-self.Gyro_drone1.getPitchPID() - self.Vision.getYPID())
-        self.VentralThrusterRF.setSpeedPID(self.VentralPowerRF,
-                                           zpid=self.Gyro_drone1.getRollPID(),
-                                           ypid=-self.Gyro_drone1.getPitchPID() - self.Vision.getYPID())
+        self.Thruster_VentralLB.setSpeedPID(self.VentralPowerLB,
+                                            zpid=self.Gyro_drone1.getRollPID(),
+                                            ypid=self.Gyro_drone1.getPitchPID() + self.Vision.getYPID())
+        self.Thruster_VentralRB.setSpeedPID(self.VentralPowerRB,
+                                            zpid=-self.Gyro_drone1.getRollPID(),
+                                            ypid=self.Gyro_drone1.getPitchPID() + self.Vision.getYPID())
+        self.Thruster_VentralLF.setSpeedPID(self.VentralPowerLF,
+                                            zpid=-self.Gyro_drone1.getRollPID(),
+                                            ypid=-self.Gyro_drone1.getPitchPID() - self.Vision.getYPID())
+        self.Thruster_VentralRF.setSpeedPID(self.VentralPowerRF,
+                                            zpid=self.Gyro_drone1.getRollPID(),
+                                            ypid=-self.Gyro_drone1.getPitchPID() - self.Vision.getYPID())
 
     def UpdateThrustersGyroPID(self):
-        self.LateralThrusterLB.setSpeedPID(self.LateralPowerLB, xpid=self.Gyro_drone1.getYawPID())
-        self.LateralThrusterLF.setSpeedPID(self.LateralPowerLF, xpid=self.Gyro_drone1.getYawPID())
-        self.LateralThrusterRB.setSpeedPID(self.LateralPowerRB, xpid=-self.Gyro_drone1.getYawPID())
-        self.LateralThrusterRF.setSpeedPID(self.LateralPowerRF, xpid=-self.Gyro_drone1.getYawPID())
+        self.Thruster_LateralLB.setSpeedPID(self.LateralPowerLB, xpid=self.Gyro_drone1.getYawPID())
+        self.Thruster_LateralLF.setSpeedPID(self.LateralPowerLF, xpid=self.Gyro_drone1.getYawPID())
+        self.Thruster_LateralRB.setSpeedPID(self.LateralPowerRB, xpid=-self.Gyro_drone1.getYawPID())
+        self.Thruster_LateralRF.setSpeedPID(self.LateralPowerRF, xpid=-self.Gyro_drone1.getYawPID())
 
-        self.VentralThrusterLB.setSpeedPID(self.VentralPowerLB,
-                                           zpid=self.Gyro_drone1.getRollPID(),
-                                           ypid=-self.Gyro_drone1.getPitchPID())
-        self.VentralThrusterRB.setSpeedPID(self.VentralPowerRB,
-                                           zpid=-self.Gyro_drone1.getRollPID(),
-                                           ypid=-self.Gyro_drone1.getPitchPID())
-        self.VentralThrusterLF.setSpeedPID(self.VentralPowerLF,
-                                           zpid=-self.Gyro_drone1.getRollPID(),
-                                           ypid=-self.Gyro_drone1.getPitchPID())
-        self.VentralThrusterRF.setSpeedPID(self.VentralPowerRF,
-                                           zpid=self.Gyro_drone1.getRollPID(),
-                                           ypid=-self.Gyro_drone1.getPitchPID())
+        self.Thruster_VentralLB.setSpeedPID(self.VentralPowerLB,
+                                            zpid=self.Gyro_drone1.getRollPID(),
+                                            ypid=-self.Gyro_drone1.getPitchPID())
+        self.Thruster_VentralRB.setSpeedPID(self.VentralPowerRB,
+                                            zpid=-self.Gyro_drone1.getRollPID(),
+                                            ypid=-self.Gyro_drone1.getPitchPID())
+        self.Thruster_VentralLF.setSpeedPID(self.VentralPowerLF,
+                                            zpid=-self.Gyro_drone1.getRollPID(),
+                                            ypid=-self.Gyro_drone1.getPitchPID())
+        self.Thruster_VentralRF.setSpeedPID(self.VentralPowerRF,
+                                            zpid=self.Gyro_drone1.getRollPID(),
+                                            ypid=-self.Gyro_drone1.getPitchPID())
 
     def UpdateThrustersVisionPID(self):
 
-        self.LateralThrusterLB.setSpeedPID(self.LateralPowerLB, xpid=self.Vision.getXPID())
-        self.LateralThrusterLF.setSpeedPID(self.LateralPowerLF, xpid=self.Vision.getXPID())
-        self.LateralThrusterRB.setSpeedPID(self.LateralPowerRB, xpid=-self.Vision.getXPID())
-        self.LateralThrusterRF.setSpeedPID(self.LateralPowerRF, xpid=-self.Vision.getXPID())
+        self.Thruster_LateralLB.setSpeedPID(self.LateralPowerLB, xpid=self.Vision.getXPID())
+        self.Thruster_LateralLF.setSpeedPID(self.LateralPowerLF, xpid=self.Vision.getXPID())
+        self.Thruster_LateralRB.setSpeedPID(self.LateralPowerRB, xpid=-self.Vision.getXPID())
+        self.Thruster_LateralRF.setSpeedPID(self.LateralPowerRF, xpid=-self.Vision.getXPID())
 
-        self.VentralThrusterLB.setSpeedPID(self.VentralPowerLB,
-                                           ypid=self.Vision.getYPID())
-        self.VentralThrusterRB.setSpeedPID(self.VentralPowerRB,
-                                           ypid=self.Vision.getYPID())
-        self.VentralThrusterLF.setSpeedPID(self.VentralPowerLF,
-                                           ypid=-self.Vision.getYPID())
-        self.VentralThrusterRF.setSpeedPID(self.VentralPowerRF,
-                                           ypid=-self.Vision.getYPID())
+        self.Thruster_VentralLB.setSpeedPID(self.VentralPowerLB,
+                                            ypid=self.Vision.getYPID())
+        self.Thruster_VentralRB.setSpeedPID(self.VentralPowerRB,
+                                            ypid=self.Vision.getYPID())
+        self.Thruster_VentralLF.setSpeedPID(self.VentralPowerLF,
+                                            ypid=-self.Vision.getYPID())
+        self.Thruster_VentralRF.setSpeedPID(self.VentralPowerRF,
+                                            ypid=-self.Vision.getYPID())
 
     def UpdateGyro(self):
         if self.UsingGyro:
@@ -563,14 +563,14 @@ class NavigationCommander:
         self.UpdateThrusters()
 
     def printTelemetry(self):
-        print("Ventral LB: ", self.VentralThrusterLB.getSpeed())
-        print("Ventral LF: ", self.VentralThrusterLF.getSpeed())
-        print("Ventral RB: ", self.VentralThrusterRB.getSpeed())
-        print("Ventral RF: ", self.VentralThrusterRF.getSpeed())
-        print("Lateral LB: ", self.VentralThrusterLB.getSpeed())
-        print("Lateral RB: ", self.VentralThrusterRB.getSpeed())
-        print("Lateral RF: ", self.VentralThrusterRF.getSpeed())
-        print("Lateral LF: ", self.VentralThrusterLF.getSpeed())
+        print("Ventral LB: ", self.Thruster_VentralLB.getSpeed())
+        print("Ventral LF: ", self.Thruster_VentralLF.getSpeed())
+        print("Ventral RB: ", self.Thruster_VentralRB.getSpeed())
+        print("Ventral RF: ", self.Thruster_VentralRF.getSpeed())
+        print("Lateral LB: ", self.Thruster_VentralLB.getSpeed())
+        print("Lateral RB: ", self.Thruster_VentralRB.getSpeed())
+        print("Lateral RF: ", self.Thruster_VentralRF.getSpeed())
+        print("Lateral LF: ", self.Thruster_VentralLF.getSpeed())
 
         print("Vision Offset: ", self.Vision.getOffset())
 
@@ -582,14 +582,14 @@ class NavigationCommander:
 
     # ending vehicle connection and AI processing after mission completion or a major fucky wucky
     def Terminate(self):
-        self.VentralThrusterLB.setSpeed(0)
-        self.VentralThrusterLF.setSpeed(0)
-        self.VentralThrusterRB.setSpeed(0)
-        self.VentralThrusterRF.setSpeed(0)
-        self.LateralThrusterLB.setSpeed(0)
-        self.LateralThrusterRB.setSpeed(0)
-        self.LateralThrusterRF.setSpeed(0)
-        self.LateralThrusterLF.setSpeed(0)
+        self.Thruster_VentralLB.setSpeed(0)
+        self.Thruster_VentralLF.setSpeed(0)
+        self.Thruster_VentralRB.setSpeed(0)
+        self.Thruster_VentralRF.setSpeed(0)
+        self.Thruster_LateralLB.setSpeed(0)
+        self.Thruster_LateralRB.setSpeed(0)
+        self.Thruster_LateralRF.setSpeed(0)
+        self.Thruster_LateralLF.setSpeed(0)
         # self.UpdateThrusters()
         self.SendToArduino("STOP")
         time.sleep(1)

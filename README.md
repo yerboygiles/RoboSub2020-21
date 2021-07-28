@@ -398,10 +398,11 @@ i hate using single digit variables, but when I do, it signifies an index
 or counter.
 
 This_case1 signifies a piece of hardware, the type being *This* and the 
-*case1* meaning the designation + which # hardpoint it is. Example below. 
+*case1* meaning the designation and sometimes which # hardpoint it is. 
+Example below. 
 
 ```
- if (abs(self.Gyro_hive.getYaw() - abs(self.YawOffset)) < threshold) and (
-                abs(self.Gyro_hive.getPitch() - abs(self.PitchOffset)) < threshold) and (
-                abs(self.Gyro_hive.getRoll() - abs(self.RollOffset)) < threshold):
+self.Gyro_drone1 = imu_ard_data.WT61P(self.serial) 
+
+self.Thruster_VentralLB = ThrusterDriver("LB")  # left back  
 ```
