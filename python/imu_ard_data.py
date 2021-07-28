@@ -1,12 +1,12 @@
 #!python3
 # Author: Theodor Giles
 # Created: 7/15/20
-# Last Edited 5/14/21
+# Last Edited 7/23/21
 # Description:
-# Modified version of the gyro data class, dedicated for merging gyro data
+# node for moving around IMU data from the arduino
 
 import time
-import math
+import re
 
 GYRO: int = 0
 POSITION: int = 1
@@ -18,17 +18,12 @@ EAST: int = 1
 DOWN: int = 2
 
 
-def MapToAngle(x):
-    in_min = -100.0
-    in_max = 100.0
-    out_min = 0.0
-    out_max = 180.0
-    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
-
-
-class GyroMerger:
+class IMU:
+    StringIn = ""
     Gyro = [0.0, 0.0, 0.0]
+    StartingGyro = [0.0, 0.0, 0.0]
     Position = [0.0, 0.0, 0.0]
+    StartingPosition = [0.0, 0.0, 0.0]
     Angular_Motions = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
     Measures = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
     Error = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
@@ -72,79 +67,36 @@ class GyroMerger:
     Roll_I = 0.0
     Roll_D = 0.0
 
-    Gyro_queen = None
-    Gyro_drone1 = None
-    Slave_Gyro2 = None
-    Yaw_Discrepancy = 0
-    Pitch_Discrepancy = 0
-    Roll_Discrepancy = 0
-
-    North_Discrepancy = 0
-    East_Discrepancy = 0
-    Down_Discrepancy = 0
-
-    def __init__(self, board, queen, drone1=None, drone2=None):
+    def __init__(self, arduino):
 
         # read info from vehicle
-        ser = board
-
-        self.Gyro_queen = queen
-        self.Gyro_drone1 = drone1
-        self.Slave_Gyro2 = drone2
+        self.serial = arduino
+        self.serial.flushInput()
 
         # arm vehicle to see position
-        print('Gyro Armed')
-
-        # - Read the actual position North, East, and Down
-        self.UpdatePosition()
-        self.StartingPosition = self.Position
-
+        # print(self.serial.readline())
         # - Read the actual attitude: Roll, Pitch, and Yaw
         self.UpdateGyro()
         self.StartingGyro = self.Gyro
+        print('Orientation: ', self.getStartingGyro())
+
+        # - Read the actual position North, East, and Down
+        # self.UpdatePosition()
+        # self.StartingPosition = self.Position
+        # print('Position: ', self.getStartingPosition())
 
         # - Read the actual depth:
         time.sleep(3)
-        print("Starting gyro: ", self.Gyro)
-        print("Starting position: ", self.Position)
+        print("Starting gyro: ", self.StartingGyro)
+        # print("Starting position: ", self.Position)
 
-    # parse gyro object data from pixhawk, can then pass to other programs
+    # parse gyro object data from wt61p, can then pass to other programs
     def UpdateGyro(self):
-        self.Yaw_Discrepancy = self.Gyro[YAW] - self.Gyro_drone1.Gyro[YAW]
-        self.Pitch_Discrepancy = self.Gyro[PITCH] - self.Gyro_drone1.Gyro[PITCH]
-        self.Roll_Discrepancy = self.Gyro[ROLL] - self.Gyro_drone1.Gyro[ROLL]
+        pass
 
-        if self.Yaw_Discrepancy < 20:
-            self.Gyro[YAW] = (self.Gyro_queen.Gyro[YAW] + self.Gyro_drone1.Gyro[YAW]) / 2
-        else:
-            self.Gyro[YAW] = self.Gyro_queen.Gyro[YAW]
-        if self.Pitch_Discrepancy < 20:
-            self.Gyro[PITCH] = (self.Gyro_queen.Gyro[PITCH] + self.Gyro_drone1.Gyro[PITCH]) / 2
-        else:
-            self.Gyro[PITCH] = self.Gyro_queen.Gyro[PITCH]
-        if self.Roll_Discrepancy < 20:
-            self.Gyro[ROLL] = (self.Gyro_queen.Gyro[ROLL] + self.Gyro_drone1.Gyro[ROLL]) / 2
-        else:
-            self.Gyro[ROLL] = self.Gyro_queen.Gyro[ROLL]
-
-    # parse position object data from pixhawk, can then pass to other programs
+    # parse gyro object data from wt61p, can then pass to other programs
     def UpdatePosition(self):
-        self.North_Discrepancy = self.Position[NORTH] - self.Gyro_drone1.Position[NORTH]
-        self.East_Discrepancy = self.Position[EAST] - self.Gyro_drone1.Position[EAST]
-        self.Down_Discrepancy = self.Position[DOWN] - self.Gyro_drone1.Position[DOWN]
-
-        if self.North_Discrepancy < 20 and self.East_Discrepancy < 20 and self.Down_Discrepancy < 20:
-            self.Position[NORTH] = (self.Gyro_queen.Position[NORTH] + self.Gyro_drone1.Position[NORTH]) / 2
-
-            self.Position[EAST] = (self.Gyro_queen.Position[EAST] + self.Gyro_drone1.Position[EAST]) / 2
-
-            self.Position[DOWN] = (self.Gyro_queen.Position[DOWN] + self.Gyro_drone1.Position[DOWN]) / 2
-
-        else:
-            self.Position[NORTH] = self.Gyro_queen.Position[NORTH]
-
-        # print("error reading position")
-        # print(self.Position)
+        pass
 
     # position read when starting the RoboSub
     def getStartingPosition(self):
@@ -196,7 +148,10 @@ class GyroMerger:
 
         # error for proportional control
         # gyro
-        self.Error[GYRO][YAW] = self.Gyro[YAW] - yawoffset
+        if ((180 - abs(yawoffset)) + (180 - abs(self.Gyro[YAW]))) < 180:
+            self.Error[GYRO][YAW] = self.Gyro[YAW] - yawoffset
+        elif ((abs(yawoffset)) + (abs(self.Gyro[YAW]))) < 180:
+            self.Error[GYRO][YAW] = self.Gyro[YAW] + yawoffset
         self.Error[GYRO][PITCH] = self.Gyro[PITCH] - pitchoffset
         self.Error[GYRO][ROLL] = self.Gyro[ROLL] - rolloffset
 
@@ -283,6 +238,123 @@ class GyroMerger:
     def getDownPID(self):
         return self.Roll_PID
 
+
+class WT61P(IMU):
+
+    # parse gyro object data from wt61p, can then pass to other programs
+    def UpdateGyro(self):
+        self.serial.writelines("GYRO")
+        line = str(self.serial.readline()).strip("'").split(':')
+        i = 0
+        for ColonParse in line:
+            if ColonParse is not None:
+                ColonParse = re.findall(r"[-+]?\d*\.\d+|\d+", ColonParse)
+                # print("ColonParse: ", ColonParse, i)
+                if i == 2:
+                    self.Gyro[ROLL] = float(ColonParse[0])
+                if i == 4:
+                    self.Gyro[PITCH] = float(ColonParse[0])
+                if i == 6:
+                    self.Gyro[YAW] = float(ColonParse[0])
+                    break
+            i = i + 1
+        pass
+
+    # parse position object data from wt61p, can then pass to other programs
+    def UpdatePosition(self):
+        self.serial.writelines("POSITION")
+        line = str(self.serial.readline()).strip("'").split(':')
+        i = 0
+        for ColonParse in line:
+            if ColonParse is not None:
+                ColonParse = re.findall(r"[-+]?\d*\.\d+|\d+", ColonParse)
+                # print("ColonParse: ", ColonParse, i)
+                if i == 2:
+                    self.Gyro[ROLL] = float(ColonParse[0])
+                if i == 4:
+                    self.Gyro[PITCH] = float(ColonParse[0])
+                if i == 6:
+                    self.Gyro[YAW] = float(ColonParse[0])
+                    break
+            i = i + 1
+        pass
+
     # end command/vehicle running
     def Terminate(self):
-        self.vehicle.close()
+        self.serial.write("STOP")
+        self.serial.close()
+
+
+class BN055(IMU):
+
+    def __init__(self, arduino):
+
+        # read info from vehicle
+        self.serial = arduino
+        self.serial.flushInput()
+
+        # arm vehicle to see position
+        # print(self.serial.readline())
+        # - Read the actual attitude: Roll, Pitch, and Yaw
+        self.UpdateGyro()
+        self.StartingGyro = self.Gyro
+        print('Orientation: ', self.getStartingGyro())
+
+        # - Read the actual position North, East, and Down
+        # self.UpdatePosition()
+        # self.StartingPosition = self.Position
+        # print('Position: ', self.getStartingPosition())
+
+        # - Read the actual depth:
+        time.sleep(3)
+        print("Starting gyro: ", self.StartingGyro)
+        # print("Starting position: ", self.Position)
+
+    # parse gyro object data from pixhawk, can then pass to other programs
+    def UpdateGyro(self):
+        self.serial.writelines("GYRO")
+        i = 0
+        time.sleep(0.01)
+        # print("Updating...")
+        line = str(self.serial.readline()).strip("'").split(':')
+        for ColonParse in line:
+            if ColonParse is not None:
+                ColonParse = re.findall(r"[-+]?\d*\.\d+|\d+", ColonParse)
+                # print("ColonParse: ", ColonParse, i)
+                if i == 2:
+                    self.Gyro[YAW] = float(ColonParse[0])
+                if i == 4:
+                    self.Gyro[PITCH] = float(ColonParse[0])
+                if i == 6:
+                    self.Gyro[ROLL] = float(ColonParse[0])
+                    break
+            i = i + 1
+        # print("Gyro: ", self.Gyro)
+
+    # parse position object data from pixhawk, can then pass to other programs
+    def UpdatePosition(self):
+        self.serial.writelines("POSITION")
+        i = 0
+        time.sleep(0.01)
+        line = str(self.serial.readline()).strip("'").split(':')
+        for ColonParse in line:
+            if ColonParse is not None:
+                ColonParse = re.findall(r"[-+]?\d*\.\d+|\d+", ColonParse)
+                if ColonParse == "Orient":
+                    break
+                if i == 2:
+                    self.Position[NORTH] = float(ColonParse[0])
+                if i == 4:
+                    self.Position[EAST] = float(ColonParse[0])
+                if i == 6:
+                    self.Position[DOWN] = float(ColonParse[0])
+                    break
+            i = i + 1
+
+    def WriteToSerial(self, toprint):
+        self.serial.writelines(toprint)
+
+    # end command/vehicle running
+    def Terminate(self):
+        self.serial.write("STOP")
+        self.serial.close()

@@ -1,10 +1,9 @@
 #!python3
 # Author: Theodor Giles
 # Created: 7/15/20
-# Last Edited 7/13/21
+# Last Edited 7/28/21
 # Description:
-# Node for data from the phidgetspatial 9dof,
-# gyro/accelerometer and positioning data
+# Node for data from the rpi
 
 from Phidget22.Phidget import *
 from Phidget22.Devices.Spatial import *

@@ -1,7 +1,7 @@
 #!python3
 # Author: Theodor Giles
 # Created: 11/22/20
-# Last Edited 7/16/21
+# Last Edited 7/23/21
 # Description:
 # This node manages the commands/movement/physical
 # control of the RoboSub V2, 2020-21
@@ -10,9 +10,7 @@ import time
 # import random
 import math
 import serial
-import bno055_data
-import phidget9dof_data
-import gyro_data_merger
+import imu_ard_data
 import vision_v1
 import remote_control
 
@@ -41,9 +39,8 @@ class MovementCommander:
         if self.UsingGyro:
             print("Sending IMU")
             self.SendToArduino("IMU")
-            self.Gyro_drone1 = bno055_data.BN055(self.serial)
-            self.Gyro_queen = phidget9dof_data.Phidget9dof()
-            self.Gyro_hive = gyro_data_merger.GyroMerger(self.Gyro_queen, self.Gyro_drone1)
+            self.Gyro_drone1 = imu_ard_data.WT61P(self.serial)
+            self.Gyro_queen = imu_ard_data.Phidget9dof()
         else:
             print("Sending NOIMU")
             self.SendToArduino("NOIMU")
@@ -198,7 +195,7 @@ class MovementCommander:
         ramtime = 0
         while engaging:
             self.Vision.StereoTarget(False)
-            # 0- "MOVE TO",
+            # 0- "MOVE TO"
             if self.CommandIndex == 0:
                 if self.Vision.getDistance() < int(self.SuppCommand):
                     engaging = False
@@ -210,7 +207,7 @@ class MovementCommander:
                         engaging = False
                 else:
                     ramtime = time.perf_counter()
-            # 2- "FIRE AT",
+            # 2- "FIRE AT"
             # 3- "FOLLOW"
             self.UpdateThrustersVisionPID(self.Vision.getOffset())
 
@@ -481,7 +478,26 @@ class MovementCommander:
         self.VentralThrusterLF.SetSpeed(self.VentralPowerLF)
         self.VentralThrusterRF.SetSpeed(self.VentralPowerRF)
 
-    def UpdateThrustersPID(self):
+    def UpdateThrustersGyroVisionPID(self):
+        self.LateralThrusterLB.SetSpeedPID(self.LateralPowerLB, xpid=self.Gyro_hive.getYawPID()+self.Vision.getXPID())
+        self.LateralThrusterLF.SetSpeedPID(self.LateralPowerLF, xpid=self.Gyro_hive.getYawPID()+self.Vision.getXPID())
+        self.LateralThrusterRB.SetSpeedPID(self.LateralPowerRB, xpid=-self.Gyro_hive.getYawPID()-self.Vision.getXPID())
+        self.LateralThrusterRF.SetSpeedPID(self.LateralPowerRF, xpid=-self.Gyro_hive.getYawPID()-self.Vision.getXPID())
+
+        self.VentralThrusterLB.SetSpeedPID(self.VentralPowerLB,
+                                           zpid=self.Gyro_hive.getRollPID(),
+                                           ypid=self.Gyro_hive.getPitchPID()+self.Vision.getYPID())
+        self.VentralThrusterRB.SetSpeedPID(self.VentralPowerRB,
+                                           zpid=-self.Gyro_hive.getRollPID(),
+                                           ypid=self.Gyro_hive.getPitchPID()+self.Vision.getYPID())
+        self.VentralThrusterLF.SetSpeedPID(self.VentralPowerLF,
+                                           zpid=-self.Gyro_hive.getRollPID(),
+                                           ypid=-self.Gyro_hive.getPitchPID()-self.Vision.getYPID())
+        self.VentralThrusterRF.SetSpeedPID(self.VentralPowerRF,
+                                           zpid=self.Gyro_hive.getRollPID(),
+                                           ypid=-self.Gyro_hive.getPitchPID()-self.Vision.getYPID())
+
+    def UpdateThrustersGyroPID(self):
         self.LateralThrusterLB.SetSpeedPID(self.LateralPowerLB, xpid=self.Gyro_hive.getYawPID())
         self.LateralThrusterLF.SetSpeedPID(self.LateralPowerLF, xpid=self.Gyro_hive.getYawPID())
         self.LateralThrusterRB.SetSpeedPID(self.LateralPowerRB, xpid=-self.Gyro_hive.getYawPID())
@@ -508,9 +524,9 @@ class MovementCommander:
         self.LateralThrusterRF.SetSpeedPID(self.LateralPowerRF, xpid=-self.Vision.getXPID())
 
         self.VentralThrusterLB.SetSpeedPID(self.VentralPowerLB,
-                                           ypid=-self.Vision.getYPID())
+                                           ypid=self.Vision.getYPID())
         self.VentralThrusterRB.SetSpeedPID(self.VentralPowerRB,
-                                           ypid=-self.Vision.getYPID())
+                                           ypid=self.Vision.getYPID())
         self.VentralThrusterLF.SetSpeedPID(self.VentralPowerLF,
                                            ypid=-self.Vision.getYPID())
         self.VentralThrusterRF.SetSpeedPID(self.VentralPowerRF,

@@ -1,7 +1,7 @@
 #!python3
 # Author: Theodor Giles
 # Created: 7/15/20
-# Last Edited 8/12/20
+# Last Edited 7/23/21
 # Description:
 # node for moving around data from the
 # bno055 for attitude and positioning
@@ -21,7 +21,7 @@ EAST: int = 1
 DOWN: int = 2
 
 
-class BN055:
+class WT61P:
     StringIn = ""
     Gyro = [0.0, 0.0, 0.0]
     Position = [0.0, 0.0, 0.0]
@@ -91,46 +91,28 @@ class BN055:
         print("Starting gyro: ", self.StartingGyro)
         # print("Starting position: ", self.Position)
 
-    # parse gyro object data from pixhawk, can then pass to other programs
+    # parse gyro object data from wt61p, can then pass to other programs
     def UpdateGyro(self):
-        self.serial.write("GYRO".encode('utf-8'))
-        i = 0
-        time.sleep(0.01)
-        # print("Updating...")
+        self.serial.writelines("GYRO")
         line = str(self.serial.readline()).strip("'").split(':')
+        i = 0
         for ColonParse in line:
             if ColonParse is not None:
                 ColonParse = re.findall(r"[-+]?\d*\.\d+|\d+", ColonParse)
                 # print("ColonParse: ", ColonParse, i)
                 if i == 2:
-                    self.Gyro[YAW] = float(ColonParse[0])
+                    self.Gyro[ROLL] = float(ColonParse[0])
                 if i == 4:
                     self.Gyro[PITCH] = float(ColonParse[0])
                 if i == 6:
-                    self.Gyro[ROLL] = float(ColonParse[0])
+                    self.Gyro[YAW] = float(ColonParse[0])
                     break
             i = i + 1
-        # print("Gyro: ", self.Gyro)
+        pass
 
-    # parse position object data from pixhawk, can then pass to other programs
+    # parse position object data from wt61p, can then pass to other programs
     def UpdatePosition(self):
-        self.serial.write("POS".encode('utf-8'))
-        i = 0
-        time.sleep(0.01)
-        line = str(self.serial.readline()).strip("'").split(':')
-        for ColonParse in line:
-            if ColonParse is not None:
-                ColonParse = re.findall(r"[-+]?\d*\.\d+|\d+", ColonParse)
-                if ColonParse == "Orient":
-                    break
-                if i == 2:
-                    self.Position[NORTH] = float(ColonParse[0])
-                if i == 4:
-                    self.Position[EAST] = float(ColonParse[0])
-                if i == 6:
-                    self.Position[DOWN] = float(ColonParse[0])
-                    break
-            i = i + 1
+        pass
 
     def WriteToSerial(self, toprint):
         self.serial.writelines(toprint)
