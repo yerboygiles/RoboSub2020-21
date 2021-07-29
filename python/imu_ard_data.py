@@ -22,7 +22,8 @@ class IMU:
     StringIn = ""
     Gyro = [0.0, 0.0, 0.0]
     StartingGyro = [0.0, 0.0, 0.0]
-    Position = [0.0, 0.0, 0.0]
+    Acceleration = [0.0, 0.0, 0.0]
+    Velocity = [0.0, 0.0, 0.0]
     StartingPosition = [0.0, 0.0, 0.0]
     Angular_Motions = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
     Measures = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
@@ -104,16 +105,16 @@ class IMU:
 
     # current position read
     def getPosition(self):
-        return self.Position
+        return self.Acceleration
 
     def getNorth(self):
-        return self.Position[NORTH]
+        return self.Acceleration[NORTH]
 
     def getEast(self):
-        return self.Position[EAST]
+        return self.Acceleration[EAST]
 
     def getDown(self):
-        return self.Position[DOWN]
+        return self.Acceleration[DOWN]
 
     # gyro read when starting the RoboSub
     def getStartingGyro(self):
@@ -135,6 +136,7 @@ class IMU:
     # req for PID calculation
     def CalculateError(self, yawoffset, pitchoffset, rolloffset, northoffset, eastoffset, downoffset):
 
+        self.Velocity[NORTH] = self.Acceleration[NORTH]
         # previous error for error delta
         # gyro
         self.Previous_Error[GYRO][YAW] = self.Error[GYRO][YAW]
@@ -156,9 +158,9 @@ class IMU:
         self.Error[GYRO][ROLL] = self.Gyro[ROLL] - rolloffset
 
         # position
-        self.Error[POSITION][NORTH] = self.Position[NORTH] - northoffset
-        self.Error[POSITION][EAST] = self.Position[EAST] - eastoffset
-        self.Error[POSITION][DOWN] = self.Position[DOWN] - downoffset
+        self.Error[POSITION][NORTH] = self.Acceleration[NORTH] - northoffset
+        self.Error[POSITION][EAST] = self.Acceleration[EAST] - eastoffset
+        self.Error[POSITION][DOWN] = self.Acceleration[DOWN] - downoffset
 
         # sum of error for integral
         # gyro
@@ -270,11 +272,11 @@ class WT61P(IMU):
                 ColonParse = re.findall(r"[-+]?\d*\.\d+|\d+", ColonParse)
                 # print("ColonParse: ", ColonParse, i)
                 if i == 2:
-                    self.Gyro[ROLL] = float(ColonParse[0])
+                    self.Gyro[DOWN] = float(ColonParse[0])
                 if i == 4:
-                    self.Gyro[PITCH] = float(ColonParse[0])
+                    self.Gyro[EAST] = float(ColonParse[0])
                 if i == 6:
-                    self.Gyro[YAW] = float(ColonParse[0])
+                    self.Gyro[NORTH] = float(ColonParse[0])
                     break
             i = i + 1
         pass
@@ -343,11 +345,11 @@ class BN055(IMU):
                 if ColonParse == "Orient":
                     break
                 if i == 2:
-                    self.Position[NORTH] = float(ColonParse[0])
+                    self.Acceleration[NORTH] = float(ColonParse[0])
                 if i == 4:
-                    self.Position[EAST] = float(ColonParse[0])
+                    self.Acceleration[EAST] = float(ColonParse[0])
                 if i == 6:
-                    self.Position[DOWN] = float(ColonParse[0])
+                    self.Acceleration[DOWN] = float(ColonParse[0])
                     break
             i = i + 1
 
