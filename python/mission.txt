@@ -1,1 +1,1 @@
-FORWARDS, 5
+MOVE TO, red_buoy
