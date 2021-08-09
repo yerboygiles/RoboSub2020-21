@@ -156,12 +156,6 @@ class MovementCommander:
             DrivingWithControl = DriveCommand is not -2
             self.TradeWithArduino()
 
-    def BasicWithTime(self, supplemental):
-        DrivingWithTime = True
-        while DrivingWithTime:
-            DrivingWithTime = (time.perf_counter() - self.InitialTime) < supplemental
-            self.TradeWithArduino()
-
     def BasicLinear(self, supplemental):
         pass
 
@@ -263,24 +257,8 @@ class MovementCommander:
         except:
             self.Terminate()
 
-    def CheckIfGyroDone(self, threshold=15, timethreshold=5):
-        # if(self.Gyro.getYaw() < 0):
-        self.GyroRunning = True
-        integer = 0
-        self.UpdateGyro()
-        if (abs(self.Gyro_hive.getYaw() - abs(self.YawOffset)) < threshold) and (
-                abs(self.Gyro_hive.getPitch() - abs(self.PitchOffset)) < threshold) and (
-                abs(self.Gyro_hive.getRoll() - abs(self.RollOffset)) < threshold):
-            self.ElapsedTime = time.perf_counter() - self.InitialTime
-            print("Within gyro threshold. Waiting ", timethreshold, "...")
-            if self.ElapsedTime >= timethreshold:
-                self.GyroRunning = False
-        else:
-            print("Gyro:", self.Gyro_hive.getGyro())
-            self.InitialTime = time.perf_counter()
-
-    def SendToArduino(self, whattosend):
-        self.serial.write(whattosend.encode('utf-8'))
+    def SendToArduino(self, message):
+        self.serial.write(message.encode('utf-8'))
 
     def TradeWithArduino(self):
         self.UpdateThrusters()
@@ -340,96 +318,12 @@ class MovementCommander:
         pass
 
     def BasicDirectionPower(self, index, power=15):
-        if index == 1:
-            print("MOVING FORWARDS")
-            self.LateralPowerLB = power
-            self.LateralPowerLF = power
-            self.LateralPowerRB = power
-            self.LateralPowerRF = power
-        elif index == 2:
-            print("STRAFING LEFT")
-            self.LateralPowerLB = power
-            self.LateralPowerLF = -power
-            self.LateralPowerRB = -power
-            self.LateralPowerRF = power
-        elif index == 3:
-            print("REVERSING")
-            self.LateralPowerLB = -power
-            self.LateralPowerLF = -power
-            self.LateralPowerRB = -power
-            self.LateralPowerRF = -power
-        elif index == 4:
-            print("STRAFING RIGHT")
-            self.LateralPowerLB = -power
-            self.LateralPowerLF = power
-            self.LateralPowerRB = power
-            self.LateralPowerRF = -power
-        elif index == 5:
-            print("TURNING LEFT")
-            self.LateralPowerLB = -power
-            self.LateralPowerLF = -power
-            self.LateralPowerRB = power
-            self.LateralPowerRF = power
-        elif index == 6:
-            print("TURNING RIGHT")
-            self.LateralPowerLB = power
-            self.LateralPowerLF = power
-            self.LateralPowerRB = -power
-            self.LateralPowerRF = -power
-        elif index == 7:
-            print("ASCENDING")
-            self.LateralPowerLB = power
-            self.LateralPowerLF = power
-            self.LateralPowerRB = -power
-            self.LateralPowerRF = -power
-        elif index == 8:
-            print("DESCENDING")
-            self.LateralPowerLB = power
-            self.LateralPowerLF = power
-            self.LateralPowerRB = -power
-            self.LateralPowerRF = -power
-        elif index == -1:
-            print("PAUSING")
-            self.LateralPowerLB = 0
-            self.LateralPowerLF = 0
-            self.LateralPowerRB = 0
-            self.LateralPowerRF = 0
-        elif index == -2:
-            print("STOPPING")
-            self.LateralPowerLB = 0
-            self.LateralPowerLF = 0
-            self.LateralPowerRB = 0
-            self.LateralPowerRF = 0
 
     def UpdateThrusters(self):
-        self.LateralThrusterLB.SetSpeed(self.LateralPowerLB)
-        self.LateralThrusterLF.SetSpeed(self.LateralPowerLF)
-        self.LateralThrusterRB.SetSpeed(self.LateralPowerRB)
-        self.LateralThrusterRF.SetSpeed(self.LateralPowerRF)
-
-        self.VentralThrusterLB.SetSpeed(self.VentralPowerLB)
-        self.VentralThrusterRB.SetSpeed(self.VentralPowerRB)
-        self.VentralThrusterLF.SetSpeed(self.VentralPowerLF)
-        self.VentralThrusterRF.SetSpeed(self.VentralPowerRF)
+        # ex: self.LateralThrusterLB.SetSpeed(self.LateralPowerLB)
 
     def UpdateThrustersPID(self):
-        self.LateralThrusterLB.SetSpeedPID(self.LateralPowerLB, yawpid=self.Gyro_hive.getYawPID())
-        self.LateralThrusterLF.SetSpeedPID(self.LateralPowerLF, yawpid=self.Gyro_hive.getYawPID())
-        self.LateralThrusterRB.SetSpeedPID(self.LateralPowerRB, yawpid=-self.Gyro_hive.getYawPID())
-        self.LateralThrusterRF.SetSpeedPID(self.LateralPowerRF, yawpid=-self.Gyro_hive.getYawPID())
-
-        self.VentralThrusterLB.SetSpeedPID(self.VentralPowerLB,
-                                           rollpid=self.Gyro_hive.getRollPID(),
-                                           pitchpid=-self.Gyro_hive.getPitchPID())
-        self.VentralThrusterRB.SetSpeedPID(self.VentralPowerRB,
-                                           rollpid=-self.Gyro_hive.getRollPID(),
-                                           pitchpid=-self.Gyro_hive.getPitchPID())
-        self.VentralThrusterLF.SetSpeedPID(self.VentralPowerLF,
-                                           rollpid=-self.Gyro_hive.getRollPID(),
-                                           pitchpid=-self.Gyro_hive.getPitchPID())
-        self.VentralThrusterRF.SetSpeedPID(self.VentralPowerRF,
-                                           rollpid=self.Gyro_hive.getRollPID(),
-                                           pitchpid=-self.Gyro_hive.getPitchPID())
+        # ex: self.LateralThrusterLB.SetSpeedPID(self.LateralPowerLB, yawpid=self.Gyro_hive.getYawPID())
 
     def UpdateGyro(self):
         if self.UsingGyro:
@@ -445,45 +339,14 @@ class MovementCommander:
 
     def BrakeAllThrusters(self):
         # horizontal
-        self.LateralPowerLB = 0
-        self.LateralPowerLF = 0
-        self.LateralPowerRB = 0
-        self.LateralPowerRF = 0
-        # vert
-        self.VentralPowerLB = 0
-        self.VentralPowerRB = 0
-        self.VentralPowerRF = 0
-        self.VentralPowerLF = 0
-
         self.UpdateThrusters()
 
-    # searches for target if cannot find it
-    # def SearchForTarget(self, target, repositioning=False, distancethreshold=300):
 
-    # ending vehicle connection and AI processing after mission completion or a major fucky wucky
+    # end vehicle connection and runtime after mission completion or a major fucky wucky
     def Terminate(self):
-        self.VentralThrusterLB.SetSpeed(0)
-        self.VentralThrusterLF.SetSpeed(0)
-        self.VentralThrusterRB.SetSpeed(0)
-        self.VentralThrusterRF.SetSpeed(0)
-        self.LateralThrusterLB.SetSpeed(0)
-        self.LateralThrusterRB.SetSpeed(0)
-        self.LateralThrusterRF.SetSpeed(0)
-        self.LateralThrusterLF.SetSpeed(0)
-        # self.UpdateThrusters()
-        self.SendToArduino("STOP")
-        time.sleep(1)
-        if self.UsingVision:
-            print("Killing Vision. Wait 1...")
-            time.sleep(1)
-            self.VisionAI.terminate()
-        print("Killing board. Wait 1...")
-        time.sleep(1)
 
-
-# dedicated class to driving a specific thruster
-# has own PID, thruster, speed
-class ThrusterDriver:
+# dedicated class to driving a specific motor
+class MotorDriver:
     def __init__(self, name):
         self.name = name
         self.speed = 0
@@ -496,8 +359,8 @@ class ThrusterDriver:
         self.speed = MapToPWM(speed)
 
     #  sets speed of thruster and incorporates the addition of pwm variables
-    def SetSpeedPID(self, speed, rollpid=0.0, pitchpid=0.0, yawpid=0.0):
-        self.speed = float(float(speed) + float(rollpid) + float(pitchpid) + float(yawpid))
+    def SetSpeedPID(self, speed, x=0.0, y=0.0, z=0.0):
+        self.speed = float(float(speed) + float(x) + float(y) + float(z))
         if self.speed > MAX_THROTTLE:
             self.speed = MAX_THROTTLE
         elif self.speed < -MAX_THROTTLE:
