@@ -1,0 +1,30 @@
+installs - {
+pip3 install opencv-python
+sudo apt-get remove python-opencv
+sudo apt-get install python-opencv
+sudo apt-get install libcblas-dev
+sudo apt-get install libhdf5-dev
+sudo apt-get install libhdf5-serial-dev
+sudo apt-get install libatlas-base-dev
+sudo apt-get install libjasper-dev 
+sudo apt-get install libqtgui4 
+sudo apt-get install libqt4-test
+sudo apt-get install libopenjp2-7
+pip3 install matplotlib
+}
+
+you might have to install scp here, I am unsure if I had to install it or not.
+Runs on the terminal on the host PC to send the updated application to the rpi
+getting files transferred - {
+
+scp -r 'Your Path Here'\RoboSubApp2020-21 pi@raspberrypi:/home/pi/RoboSub
+
+}
+
+run mission - {
+cd RoboSub
+cd python
+python3 START_SUB_WITH_TIME.py   # when running this program, ctrl+c when it asks for a button press, and enter 3 when it prompts for
+
+}
+

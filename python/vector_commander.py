@@ -1,18 +1,17 @@
 #!python3
 # Author: Theodor Giles
 # Created: 11/22/20
-# Last Edited 5/26/21
+# Last Edited 7/29/21
 # Description:
-# This program manages the commands/movement/physical
+# This node manages the commands/movement/physical
 # control of the RoboSub V2, 2020-21
 
 import time
 # import random
 import math
 import serial
-import bno055_data
-import phidget9dof_data
-import gyro_data_merger
+import imu_ard_data
+import vision_v1
 import remote_control
 
 # from threading import Thread
@@ -27,7 +26,7 @@ MAX_THROTTLE = 15
 GENERAL_THROTTLE = 17.5
 
 
-class MovementCommander:
+class NavigationCommander:
 
     # initialize everything to supposed starting position
     def __init__(self, usingvision=False, usinggyro=False, usingsim=False, resetheadingoncmd=False):
@@ -40,15 +39,14 @@ class MovementCommander:
         if self.UsingGyro:
             print("Sending IMU")
             self.SendToArduino("IMU")
-            self.Gyro_drone1 = bno055_data.BN055(self.serial)
-            self.Gyro_queen = phidget9dof_data.Phidget9dof()
-            self.Gyro_hive = gyro_data_merger.GyroMerger(self.Gyro_queen, self.Gyro_drone1)
+            self.Gyro_drone1 = imu_ard_data.WT61P(self.serial)
+
         else:
             print("Sending NOIMU")
             self.SendToArduino("NOIMU")
 
         if resetheadingoncmd:
-            self.YawOffset = self.Gyro_hive.StartingGyro[0]
+            self.YawOffset = self.Gyro_drone1.StartingGyro[0]
             self.ResetHeadingOnCMD = resetheadingoncmd
         self.YawOffset = 0
         self.PitchOffset = 0
@@ -61,9 +59,10 @@ class MovementCommander:
         self.UsingVision = usingvision
         self.UsingSim = usingsim
         if self.UsingVision:
-            import Theos_Really_Good_Detection_Script as obj_det
-            self.VisionAI = obj_det.Detector("TensorFlow_Graph/Tflite", False)
-            print("MovementCommander is using Vision AI...")
+            # import Theos_Really_Good_Detection_Script as obj_det
+            # self.VisionAI = obj_det.Detector("TensorFlow_Graph/Tflite", False)
+            # print("MovementCommander is using Vision AI...")
+            self.Vision = vision_v1.vision()
         else:
             print("MovementCommander is not using Vision AI...")
 
@@ -78,14 +77,14 @@ class MovementCommander:
         # for roll/pitch and ascent/descent
         # 'lateral' are the outer, 45 deg. oriented thrusters for
         # yaw/turning and strafe movement
-        self.VentralThrusterLB = ThrusterDriver("LB")  # left back
-        self.VentralThrusterLF = ThrusterDriver("LF")  # left front
-        self.VentralThrusterRB = ThrusterDriver("RB")  # right back
-        self.VentralThrusterRF = ThrusterDriver("RF")  # right front
-        self.LateralThrusterLB = ThrusterDriver("BL")  # back left
-        self.LateralThrusterRB = ThrusterDriver("BR")  # back right
-        self.LateralThrusterLF = ThrusterDriver("FL")  # front left !
-        self.LateralThrusterRF = ThrusterDriver("FR")  # front right !
+        self.Thruster_VentralLB = ThrusterDriver("LB")  # left back
+        self.Thruster_VentralLF = ThrusterDriver("LF")  # left front
+        self.Thruster_VentralRB = ThrusterDriver("RB")  # right back
+        self.Thruster_VentralRF = ThrusterDriver("RF")  # right front
+        self.Thruster_LateralLB = ThrusterDriver("BL")  # back left
+        self.Thruster_LateralRB = ThrusterDriver("BR")  # back right
+        self.Thruster_LateralLF = ThrusterDriver("FL")  # front left !
+        self.Thruster_LateralRF = ThrusterDriver("FR")  # front right !
         # power values to set to the thruster hardpoints
         # horizontally oriented
         self.LateralPowerLB = 0
@@ -110,9 +109,14 @@ class MovementCommander:
         # develop pathing and a lot of vision/gyro/position integration
         self.BASIC_MOVEMENT_COMMANDS = [
             "FORWARDS",
+            "STRAFE LEFT",
             "BACKWARDS",
-            "LEFT",
-            "RIGHT"
+            "STRAFE RIGHT",
+            "TURN LEFT",
+            "TURN RIGHT",
+            "ASCEND",
+            "DESCEND",
+            "PAUSE",
         ]
         self.ADVANCED_MOVEMENT_COMMANDS = [
             "LOG START POINT",
@@ -122,17 +126,20 @@ class MovementCommander:
             "SCAN FOR TARGET"
         ]
         self.TARGET_MOVEMENT_COMMANDS = [
-            "MOVE",
+            "MOVE TO",
             "RAM",
             "FIRE AT",
             "FOLLOW"
         ]
+<<<<<<< HEAD
         # currently only for firing torpedoes, maybe a claw action later on?
         self.ACTION_COMMANDS = [
             "FIRE TORPEDO AT",
             "GRAB OBJECT",
             ""
         ]
+=======
+>>>>>>> 426bf177d73aa21133795ffc55ce3a5c144fed18
         # name of object to target sent to TF/openCV AI
         self.TO_TARGET = ""
 
@@ -146,6 +153,7 @@ class MovementCommander:
             "Cesar"]
         self.TargetList = []
         print("MovementCommander initialized...")
+        self.StartingTime = time.perf_counter()
 
     def BasicDriverControl(self):
         DrivingWithControl = True
@@ -156,20 +164,20 @@ class MovementCommander:
             DrivingWithControl = DriveCommand is not -2
             self.TradeWithArduino()
 
-    def BasicWithTime(self, supplemental):
+    def BasicWithTime(self):
         DrivingWithTime = True
         while DrivingWithTime:
-            DrivingWithTime = (time.perf_counter() - self.InitialTime) < supplemental
-            self.TradeWithArduino()
+            DrivingWithTime = (time.perf_counter() - self.InitialTime) < int(self.SuppCommand)
+            self.BasicDirectionPower(self.CommandIndex)
 
-    def BasicLinear(self, supplemental):
+    def BasicLinear(self):
         pass
 
-    def BasicVectoring(self, supplemental):
+    def BasicVectoring(self):
         Vectoring = True
         i = 0
-        print("Supplemental: ", supplemental)
-        for SuppParse in str(supplemental).split(':'):
+        print("Supplemental: ", self.SuppCommand)
+        for SuppParse in str(self.SuppCommand).split(':'):
             print("SuppParse: ", SuppParse)
             if i == 0:
                 self.YawOffset = float(SuppParse)
@@ -189,6 +197,59 @@ class MovementCommander:
     def AdvancedVectoring(self):
         pass
 
+    def TargetMovement(self):
+        print("Scanning for target...")
+        # while self.SearchAndLockTarget(self.SuppCommand):
+        #     pass
+        engaging = False
+        ramtime = 0
+        while engaging:
+            self.Vision.StereoTarget(False)
+            # 0- "MOVE TO"
+            if self.CommandIndex == 0:
+                if self.Vision.getDistance() < int(self.SuppCommand):
+                    engaging = False
+            # 1- "RAM",
+            elif self.CommandIndex == 1:
+                if self.Vision.getDistance() < int(self.SuppCommand):
+                    self.BasicDirectionPower(1)
+                    if time.perf_counter() - ramtime > (int(self.SuppCommand) / 4):
+                        engaging = False
+                else:
+                    ramtime = time.perf_counter()
+            # 2- "FIRE AT"
+            # 3- "FOLLOW"
+            self.UpdateThrustersVisionPID()
+
+    def SearchAndLockTarget(self, target):
+        scanstate = False
+        state1_timer = 0
+        state2_timer = 0
+        confidence_timer: float = 0
+        self.TargetLocked = False
+        if not self.Vision.seesTargetColorMask(target):
+            self.MovingToConfidence = False
+            if scanstate:  # pause and look
+                state1_timer = time.perf_counter()
+                self.BasicDirectionPower(-2)
+                if state1_timer - state2_timer > 5:
+                    scanstate = False
+            else:  # increment and look, 6 = right, 5 = left
+                state2_timer = time.perf_counter()
+                self.BasicDirectionPower(6)
+                if state2_timer - state1_timer > 3:
+                    scanstate = True
+        else:
+            if not self.MovingToConfidence:
+                confidence_timer = time.perf_counter()
+                self.MovingToConfidence = True
+            else:
+                if time.perf_counter() - confidence_timer > 5:
+                    return False
+                self.BasicDirectionPower(-2)
+        self.UpdateThrusters()
+        return True
+
     # Concept code, basically for checking if the Sub has already seen the detected object.
     def IsTargetInMemory(self, label, x, y, z):
         NewTarget = [label, x, y, z]
@@ -204,7 +265,7 @@ class MovementCommander:
         return InMemory
 
     # Concept code, puts target into memory
-    def SaveTargetToMemory(self, label, x, y, z, area):
+    def saveTargetToMemory(self, label, x, y, z, area):
         TargetInfo = [label, x, y, z, area]
         self.TargetList.append(TargetInfo)
 
@@ -244,22 +305,36 @@ class MovementCommander:
                     else:
                         pass
                 else:
+                    print("Searching basic movement...")
                     for basiccommand in self.BASIC_MOVEMENT_COMMANDS:
                         i = 0
                         if self.MainCommand == basiccommand:
                             self.InitialTime = time.perf_counter()
                             if self.UsingGyro:
-                                self.BasicLinear(self.SuppCommand)
+                                self.BasicLinear()
                             else:
-                                self.BasicWithTime(self.SuppCommand)
+                                self.BasicWithTime()
                         i += 2
+                        self.CommandIndex += 1
+                    self.CommandIndex = 0
+                    print("Searching advanced movement...")
                     for advancedcommand in self.ADVANCED_MOVEMENT_COMMANDS:
                         i = 0
                         if self.MainCommand == advancedcommand:
                             self.InitialTime = time.perf_counter()
-                            self.BasicVectoring(self.SuppCommand)
+                            self.BasicVectoring()
                         i += 2
-                    self.CommandIndex += 1
+                        self.CommandIndex += 1
+                    self.CommandIndex = 0
+                    print("Searching target movement...")
+                    for targetcommand in self.TARGET_MOVEMENT_COMMANDS:
+                        i = 0
+                        if self.MainCommand == targetcommand:
+                            self.InitialTime = time.perf_counter()
+                            self.TargetMovement()
+                        i += 2
+                        self.CommandIndex += 1
+                    self.CommandIndex = 0
         except:
             self.Terminate()
 
@@ -268,15 +343,15 @@ class MovementCommander:
         self.GyroRunning = True
         integer = 0
         self.UpdateGyro()
-        if (abs(self.Gyro_hive.getYaw() - abs(self.YawOffset)) < threshold) and (
-                abs(self.Gyro_hive.getPitch() - abs(self.PitchOffset)) < threshold) and (
-                abs(self.Gyro_hive.getRoll() - abs(self.RollOffset)) < threshold):
+        if (abs(self.Gyro_drone1.getYaw() - abs(self.YawOffset)) < threshold) and (
+                abs(self.Gyro_drone1.getPitch() - abs(self.PitchOffset)) < threshold) and (
+                abs(self.Gyro_drone1.getRoll() - abs(self.RollOffset)) < threshold):
             self.ElapsedTime = time.perf_counter() - self.InitialTime
             print("Within gyro threshold. Waiting ", timethreshold, "...")
             if self.ElapsedTime >= timethreshold:
                 self.GyroRunning = False
         else:
-            print("Gyro:", self.Gyro_hive.getGyro())
+            print("Gyro:", self.Gyro_drone1.getGyro())
             self.InitialTime = time.perf_counter()
 
     def SendToArduino(self, whattosend):
@@ -286,48 +361,48 @@ class MovementCommander:
         self.UpdateThrusters()
         outdata = ""
         if self.secondSetTrade:
-            outdata += str(self.LateralThrusterLB.name)
+            outdata += str(self.Thruster_LateralLB.name)
             outdata += ":"
-            outdata += str(self.LateralThrusterLB.GetSpeed())
+            outdata += str(self.Thruster_LateralLB.getSpeed())
             outdata += ","
-            outdata += str(self.LateralThrusterRB.name)
+            outdata += str(self.Thruster_LateralRB.name)
             outdata += ":"
-            outdata += str(self.LateralThrusterRB.GetSpeed())
+            outdata += str(self.Thruster_LateralRB.getSpeed())
             outdata += ","
-            outdata += str(self.LateralThrusterLF.name)
+            outdata += str(self.Thruster_LateralLF.name)
             outdata += ":"
-            outdata += str(self.LateralThrusterLF.GetSpeed())
+            outdata += str(self.Thruster_LateralLF.getSpeed())
             outdata += ","
-            outdata += str(self.LateralThrusterRF.name)
+            outdata += str(self.Thruster_LateralRF.name)
             outdata += ":"
-            outdata += str(self.LateralThrusterRF.GetSpeed())
+            outdata += str(self.Thruster_LateralRF.getSpeed())
             outdata += "\n"
             self.serial.write(outdata.encode('utf-8'))
         if not self.secondSetTrade:
-            outdata += str(self.VentralThrusterLB.name)
+            outdata += str(self.Thruster_VentralLB.name)
             outdata += ":"
-            outdata += str(self.VentralThrusterLB.GetSpeed())
+            outdata += str(self.Thruster_VentralLB.getSpeed())
             outdata += ","
-            outdata += str(self.VentralThrusterLF.name)
+            outdata += str(self.Thruster_VentralLF.name)
             outdata += ":"
-            outdata += str(self.VentralThrusterLF.GetSpeed())
+            outdata += str(self.Thruster_VentralLF.getSpeed())
             outdata += ","
-            outdata += str(self.VentralThrusterRB.name)
+            outdata += str(self.Thruster_VentralRB.name)
             outdata += ":"
-            outdata += str(self.VentralThrusterRB.GetSpeed())
+            outdata += str(self.Thruster_VentralRB.getSpeed())
             outdata += ","
-            outdata += str(self.VentralThrusterRF.name)
+            outdata += str(self.Thruster_VentralRF.name)
             outdata += ":"
-            outdata += str(self.VentralThrusterRF.GetSpeed())
+            outdata += str(self.Thruster_VentralRF.getSpeed())
             outdata += "\n"
             self.serial.write(outdata.encode('utf-8'))
         self.secondSetTrade = not self.secondSetTrade
 
     def CheckIfPositionDone(self, threshold=3, timethreshold=5):
         self.PositionRunning = True
-        if (abs(self.Gyro_hive.getNorth() - self.NorthOffset) < threshold) and (
-                abs(self.Gyro_hive.getEast() - self.EastOffset) < threshold) and (
-                abs(self.Gyro_hive.getDown() - self.DownOffset) < threshold):
+        if (abs(self.Gyro_drone1.getNorth() - self.NorthOffset) < threshold) and (
+                abs(self.Gyro_drone1.getEast() - self.EastOffset) < threshold) and (
+                abs(self.Gyro_drone1.getDown() - self.DownOffset) < threshold):
             self.ElapsedTime = time.perf_counter() - self.InitialTime
             print("Within position threshold. Waiting ", timethreshold, "...")
             if self.ElapsedTime >= timethreshold:
@@ -340,108 +415,148 @@ class MovementCommander:
         pass
 
     def BasicDirectionPower(self, index, power=15):
-        if index == 1:
-            print("MOVING FORWARDS")
-            self.LateralPowerLB = power
-            self.LateralPowerLF = power
-            self.LateralPowerRB = power
-            self.LateralPowerRF = power
-        elif index == 2:
-            print("STRAFING LEFT")
-            self.LateralPowerLB = power
-            self.LateralPowerLF = -power
-            self.LateralPowerRB = -power
-            self.LateralPowerRF = power
-        elif index == 3:
-            print("REVERSING")
-            self.LateralPowerLB = -power
-            self.LateralPowerLF = -power
-            self.LateralPowerRB = -power
-            self.LateralPowerRF = -power
-        elif index == 4:
-            print("STRAFING RIGHT")
-            self.LateralPowerLB = -power
-            self.LateralPowerLF = power
-            self.LateralPowerRB = power
-            self.LateralPowerRF = -power
-        elif index == 5:
-            print("TURNING LEFT")
-            self.LateralPowerLB = -power
-            self.LateralPowerLF = -power
-            self.LateralPowerRB = power
-            self.LateralPowerRF = power
-        elif index == 6:
-            print("TURNING RIGHT")
-            self.LateralPowerLB = power
-            self.LateralPowerLF = power
-            self.LateralPowerRB = -power
-            self.LateralPowerRF = -power
-        elif index == 7:
-            print("ASCENDING")
-            self.LateralPowerLB = power
-            self.LateralPowerLF = power
-            self.LateralPowerRB = -power
-            self.LateralPowerRF = -power
-        elif index == 8:
-            print("DESCENDING")
-            self.LateralPowerLB = power
-            self.LateralPowerLF = power
-            self.LateralPowerRB = -power
-            self.LateralPowerRF = -power
-        elif index == -1:
-            print("PAUSING")
-            self.LateralPowerLB = 0
-            self.LateralPowerLF = 0
-            self.LateralPowerRB = 0
-            self.LateralPowerRF = 0
-        elif index == -2:
-            print("STOPPING")
-            self.LateralPowerLB = 0
-            self.LateralPowerLF = 0
-            self.LateralPowerRB = 0
-            self.LateralPowerRF = 0
+        if index != 0:
+            if index == 1:
+                print("MOVING FORWARDS")
+                self.LateralPowerLB = power
+                self.LateralPowerLF = power
+                self.LateralPowerRB = power
+                self.LateralPowerRF = power
+            elif index == 2:
+                print("STRAFING LEFT")
+                self.LateralPowerLB = power
+                self.LateralPowerLF = -power
+                self.LateralPowerRB = -power
+                self.LateralPowerRF = power
+            elif index == 3:
+                print("REVERSING")
+                self.LateralPowerLB = -power
+                self.LateralPowerLF = -power
+                self.LateralPowerRB = -power
+                self.LateralPowerRF = -power
+            elif index == 4:
+                print("STRAFING RIGHT")
+                self.LateralPowerLB = -power
+                self.LateralPowerLF = power
+                self.LateralPowerRB = power
+                self.LateralPowerRF = -power
+            elif index == 5:
+                print("TURNING LEFT")
+                self.LateralPowerLB = -power
+                self.LateralPowerLF = -power
+                self.LateralPowerRB = power
+                self.LateralPowerRF = power
+            elif index == 6:
+                print("TURNING RIGHT")
+                self.LateralPowerLB = power
+                self.LateralPowerLF = power
+                self.LateralPowerRB = -power
+                self.LateralPowerRF = -power
+            elif index == 7:
+                print("ASCENDING")
+                self.LateralPowerLB = power
+                self.LateralPowerLF = power
+                self.LateralPowerRB = -power
+                self.LateralPowerRF = -power
+            elif index == 8:
+                print("DESCENDING")
+                self.LateralPowerLB = power
+                self.LateralPowerLF = power
+                self.LateralPowerRB = -power
+                self.LateralPowerRF = -power
+            elif index == -1:
+                print("PAUSING")
+                self.LateralPowerLB = 0
+                self.LateralPowerLF = 0
+                self.LateralPowerRB = 0
+                self.LateralPowerRF = 0
+            elif index == -2:
+                print("STOPPING")
+                self.LateralPowerLB = 0
+                self.LateralPowerLF = 0
+                self.LateralPowerRB = 0
+                self.LateralPowerRF = 0
 
     def UpdateThrusters(self):
-        self.LateralThrusterLB.SetSpeed(self.LateralPowerLB)
-        self.LateralThrusterLF.SetSpeed(self.LateralPowerLF)
-        self.LateralThrusterRB.SetSpeed(self.LateralPowerRB)
-        self.LateralThrusterRF.SetSpeed(self.LateralPowerRF)
+        self.Thruster_LateralLB.setSpeed(self.LateralPowerLB)
+        self.Thruster_LateralLF.setSpeed(self.LateralPowerLF)
+        self.Thruster_LateralRB.setSpeed(self.LateralPowerRB)
+        self.Thruster_LateralRF.setSpeed(self.LateralPowerRF)
 
-        self.VentralThrusterLB.SetSpeed(self.VentralPowerLB)
-        self.VentralThrusterRB.SetSpeed(self.VentralPowerRB)
-        self.VentralThrusterLF.SetSpeed(self.VentralPowerLF)
-        self.VentralThrusterRF.SetSpeed(self.VentralPowerRF)
+        self.Thruster_VentralLB.setSpeed(self.VentralPowerLB)
+        self.Thruster_VentralRB.setSpeed(self.VentralPowerRB)
+        self.Thruster_VentralLF.setSpeed(self.VentralPowerLF)
+        self.Thruster_VentralRF.setSpeed(self.VentralPowerRF)
 
-    def UpdateThrustersPID(self):
-        self.LateralThrusterLB.SetSpeedPID(self.LateralPowerLB, yawpid=self.Gyro_hive.getYawPID())
-        self.LateralThrusterLF.SetSpeedPID(self.LateralPowerLF, yawpid=self.Gyro_hive.getYawPID())
-        self.LateralThrusterRB.SetSpeedPID(self.LateralPowerRB, yawpid=-self.Gyro_hive.getYawPID())
-        self.LateralThrusterRF.SetSpeedPID(self.LateralPowerRF, yawpid=-self.Gyro_hive.getYawPID())
+    def UpdateThrustersGyroVisionPID(self):
+        self.Thruster_LateralLB.setSpeedPID(self.LateralPowerLB,
+                                            xpid=self.Gyro_drone1.getYawPID() + self.Vision.getXPID())
+        self.Thruster_LateralLF.setSpeedPID(self.LateralPowerLF,
+                                            xpid=self.Gyro_drone1.getYawPID() + self.Vision.getXPID())
+        self.Thruster_LateralRB.setSpeedPID(self.LateralPowerRB,
+                                            xpid=-self.Gyro_drone1.getYawPID() - self.Vision.getXPID())
+        self.Thruster_LateralRF.setSpeedPID(self.LateralPowerRF,
+                                            xpid=-self.Gyro_drone1.getYawPID() - self.Vision.getXPID())
 
-        self.VentralThrusterLB.SetSpeedPID(self.VentralPowerLB,
-                                           rollpid=self.Gyro_hive.getRollPID(),
-                                           pitchpid=-self.Gyro_hive.getPitchPID())
-        self.VentralThrusterRB.SetSpeedPID(self.VentralPowerRB,
-                                           rollpid=-self.Gyro_hive.getRollPID(),
-                                           pitchpid=-self.Gyro_hive.getPitchPID())
-        self.VentralThrusterLF.SetSpeedPID(self.VentralPowerLF,
-                                           rollpid=-self.Gyro_hive.getRollPID(),
-                                           pitchpid=-self.Gyro_hive.getPitchPID())
-        self.VentralThrusterRF.SetSpeedPID(self.VentralPowerRF,
-                                           rollpid=self.Gyro_hive.getRollPID(),
-                                           pitchpid=-self.Gyro_hive.getPitchPID())
+        self.Thruster_VentralLB.setSpeedPID(self.VentralPowerLB,
+                                            zpid=self.Gyro_drone1.getRollPID(),
+                                            ypid=self.Gyro_drone1.getPitchPID() + self.Vision.getYPID())
+        self.Thruster_VentralRB.setSpeedPID(self.VentralPowerRB,
+                                            zpid=-self.Gyro_drone1.getRollPID(),
+                                            ypid=self.Gyro_drone1.getPitchPID() + self.Vision.getYPID())
+        self.Thruster_VentralLF.setSpeedPID(self.VentralPowerLF,
+                                            zpid=-self.Gyro_drone1.getRollPID(),
+                                            ypid=-self.Gyro_drone1.getPitchPID() - self.Vision.getYPID())
+        self.Thruster_VentralRF.setSpeedPID(self.VentralPowerRF,
+                                            zpid=self.Gyro_drone1.getRollPID(),
+                                            ypid=-self.Gyro_drone1.getPitchPID() - self.Vision.getYPID())
+
+    def UpdateThrustersGyroPID(self):
+        self.Thruster_LateralLB.setSpeedPID(self.LateralPowerLB, xpid=self.Gyro_drone1.getYawPID())
+        self.Thruster_LateralLF.setSpeedPID(self.LateralPowerLF, xpid=self.Gyro_drone1.getYawPID())
+        self.Thruster_LateralRB.setSpeedPID(self.LateralPowerRB, xpid=-self.Gyro_drone1.getYawPID())
+        self.Thruster_LateralRF.setSpeedPID(self.LateralPowerRF, xpid=-self.Gyro_drone1.getYawPID())
+
+        self.Thruster_VentralLB.setSpeedPID(self.VentralPowerLB,
+                                            zpid=self.Gyro_drone1.getRollPID(),
+                                            ypid=-self.Gyro_drone1.getPitchPID())
+        self.Thruster_VentralRB.setSpeedPID(self.VentralPowerRB,
+                                            zpid=-self.Gyro_drone1.getRollPID(),
+                                            ypid=-self.Gyro_drone1.getPitchPID())
+        self.Thruster_VentralLF.setSpeedPID(self.VentralPowerLF,
+                                            zpid=-self.Gyro_drone1.getRollPID(),
+                                            ypid=-self.Gyro_drone1.getPitchPID())
+        self.Thruster_VentralRF.setSpeedPID(self.VentralPowerRF,
+                                            zpid=self.Gyro_drone1.getRollPID(),
+                                            ypid=-self.Gyro_drone1.getPitchPID())
+
+    def UpdateThrustersVisionPID(self):
+
+        self.Thruster_LateralLB.setSpeedPID(self.LateralPowerLB, xpid=self.Vision.getXPID())
+        self.Thruster_LateralLF.setSpeedPID(self.LateralPowerLF, xpid=self.Vision.getXPID())
+        self.Thruster_LateralRB.setSpeedPID(self.LateralPowerRB, xpid=-self.Vision.getXPID())
+        self.Thruster_LateralRF.setSpeedPID(self.LateralPowerRF, xpid=-self.Vision.getXPID())
+
+        self.Thruster_VentralLB.setSpeedPID(self.VentralPowerLB,
+                                            ypid=self.Vision.getYPID())
+        self.Thruster_VentralRB.setSpeedPID(self.VentralPowerRB,
+                                            ypid=self.Vision.getYPID())
+        self.Thruster_VentralLF.setSpeedPID(self.VentralPowerLF,
+                                            ypid=-self.Vision.getYPID())
+        self.Thruster_VentralRF.setSpeedPID(self.VentralPowerRF,
+                                            ypid=-self.Vision.getYPID())
 
     def UpdateGyro(self):
         if self.UsingGyro:
-            self.Gyro_hive.UpdateGyro()
+            self.Gyro_drone1.UpdateGyro()
             # print(self.Gyro.getGyro())
-            self.Gyro_hive.CalculateError(self.YawOffset,
-                                          self.PitchOffset,
-                                          self.RollOffset,
-                                          self.NorthOffset,
-                                          self.EastOffset,
-                                          self.DownOffset)
-            self.Gyro_hive.PID()
+            self.Gyro_drone1.CalculateError(self.YawOffset,
+                                            self.PitchOffset,
+                                            self.RollOffset,
+                                            self.NorthOffset,
+                                            self.EastOffset,
+                                            self.DownOffset)
+            self.Gyro_drone1.PID()
 
     def BrakeAllThrusters(self):
         # horizontal
@@ -457,26 +572,41 @@ class MovementCommander:
 
         self.UpdateThrusters()
 
+    def printTelemetry(self):
+        print("Ventral LB: ", self.Thruster_VentralLB.getSpeed())
+        print("Ventral LF: ", self.Thruster_VentralLF.getSpeed())
+        print("Ventral RB: ", self.Thruster_VentralRB.getSpeed())
+        print("Ventral RF: ", self.Thruster_VentralRF.getSpeed())
+        print("Lateral LB: ", self.Thruster_VentralLB.getSpeed())
+        print("Lateral RB: ", self.Thruster_VentralRB.getSpeed())
+        print("Lateral RF: ", self.Thruster_VentralRF.getSpeed())
+        print("Lateral LF: ", self.Thruster_VentralLF.getSpeed())
+
+        print("Vision Offset: ", self.Vision.getOffset())
+
+        self.RunningTime = time.perf_counter() - self.StartingTime
+        print("Running Time: ", self.RunningTime)
+
     # searches for target if cannot find it
     # def SearchForTarget(self, target, repositioning=False, distancethreshold=300):
 
     # ending vehicle connection and AI processing after mission completion or a major fucky wucky
     def Terminate(self):
-        self.VentralThrusterLB.SetSpeed(0)
-        self.VentralThrusterLF.SetSpeed(0)
-        self.VentralThrusterRB.SetSpeed(0)
-        self.VentralThrusterRF.SetSpeed(0)
-        self.LateralThrusterLB.SetSpeed(0)
-        self.LateralThrusterRB.SetSpeed(0)
-        self.LateralThrusterRF.SetSpeed(0)
-        self.LateralThrusterLF.SetSpeed(0)
+        self.Thruster_VentralLB.setSpeed(0)
+        self.Thruster_VentralLF.setSpeed(0)
+        self.Thruster_VentralRB.setSpeed(0)
+        self.Thruster_VentralRF.setSpeed(0)
+        self.Thruster_LateralLB.setSpeed(0)
+        self.Thruster_LateralRB.setSpeed(0)
+        self.Thruster_LateralRF.setSpeed(0)
+        self.Thruster_LateralLF.setSpeed(0)
         # self.UpdateThrusters()
         self.SendToArduino("STOP")
         time.sleep(1)
         if self.UsingVision:
             print("Killing Vision. Wait 1...")
             time.sleep(1)
-            self.VisionAI.terminate()
+            self.Vision.Terminate()
         print("Killing board. Wait 1...")
         time.sleep(1)
 
@@ -488,7 +618,7 @@ class ThrusterDriver:
         self.name = name
         self.speed = 0
 
-    def SetSpeed(self, speed):  # speed is a value between -100 and 100
+    def setSpeed(self, speed):  # speed is a value between -100 and 100
         if speed > MAX_THROTTLE:
             speed = MAX_THROTTLE
         elif speed < -MAX_THROTTLE:
@@ -496,8 +626,8 @@ class ThrusterDriver:
         self.speed = MapToPWM(speed)
 
     #  sets speed of thruster and incorporates the addition of pwm variables
-    def SetSpeedPID(self, speed, rollpid=0.0, pitchpid=0.0, yawpid=0.0):
-        self.speed = float(float(speed) + float(rollpid) + float(pitchpid) + float(yawpid))
+    def setSpeedPID(self, speed, zpid=0.0, ypid=0.0, xpid=0.0):
+        self.speed = float(float(speed) + float(zpid) + float(ypid) + float(xpid))
         if self.speed > MAX_THROTTLE:
             self.speed = MAX_THROTTLE
         elif self.speed < -MAX_THROTTLE:
@@ -505,7 +635,7 @@ class ThrusterDriver:
         self.speed = MapToPWM(self.speed)
 
     # returns speed
-    def GetSpeed(self):
+    def getSpeed(self):
         return self.speed
 
 

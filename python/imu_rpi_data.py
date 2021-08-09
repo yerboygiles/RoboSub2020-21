@@ -1,11 +1,14 @@
 #!python3
 # Author: Theodor Giles
 # Created: 7/15/20
-# Last Edited 5/14/21
+# Last Edited 7/29/21
 # Description:
-# Modified version of the gyro data class, dedicated for merging gyro data
+# Node for data from the rpi
 
+from Phidget22.Phidget import *
+from Phidget22.Devices.Spatial import *
 import time
+import re
 import math
 
 GYRO: int = 0
@@ -26,7 +29,8 @@ def MapToAngle(x):
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
 
 
-class GyroMerger:
+class Phidget9dof:
+    StringIn = ""
     Gyro = [0.0, 0.0, 0.0]
     Position = [0.0, 0.0, 0.0]
     Angular_Motions = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
@@ -72,79 +76,52 @@ class GyroMerger:
     Roll_I = 0.0
     Roll_D = 0.0
 
-    Gyro_queen = None
-    Gyro_drone1 = None
-    Slave_Gyro2 = None
-    Yaw_Discrepancy = 0
-    Pitch_Discrepancy = 0
-    Roll_Discrepancy = 0
-
-    North_Discrepancy = 0
-    East_Discrepancy = 0
-    Down_Discrepancy = 0
-
-    def __init__(self, board, queen, drone1=None, drone2=None):
-
+    def __init__(self):
         # read info from vehicle
-        ser = board
+        spatial0 = Spatial()
 
-        self.Gyro_queen = queen
-        self.Gyro_drone1 = drone1
-        self.Slave_Gyro2 = drone2
+        spatial0.setOnSpatialDataHandler(self.onSpatialData)
+
+        spatial0.openWaitForAttachment(5000)
 
         # arm vehicle to see position
         print('Gyro Armed')
+        # - Read the actual attitude: Roll, Pitch, and Yaw
+        self.UpdateGyro()
+        self.StartingGyro = self.Gyro
+        print('Orientation: ', self.getStartingGyro())
 
         # - Read the actual position North, East, and Down
         self.UpdatePosition()
         self.StartingPosition = self.Position
-
-        # - Read the actual attitude: Roll, Pitch, and Yaw
-        self.UpdateGyro()
-        self.StartingGyro = self.Gyro
+        print('Position: ', self.getStartingPosition())
 
         # - Read the actual depth:
         time.sleep(3)
-        print("Starting gyro: ", self.Gyro)
-        print("Starting position: ", self.Position)
+        print("Starting gyro: ", self.StartingGyro)
+        # print("Starting position: ", self.Position)
+
+    def onSpatialData(self, acceleration, angularRate, magneticField, timestamp):
+        print(
+            "Acceleration: \t" + str(acceleration[0]) + "  |  " + str(acceleration[1]) + "  |  " + str(acceleration[2]))
+
+        self.Position[NORTH] = acceleration[NORTH] * (timestamp**2)
+        self.Position[EAST] =  acceleration[EAST] * (timestamp**2)
+        self.Position[DOWN] = acceleration[DOWN] * (timestamp**2)
+
+        print("AngularRate: \t" + str(angularRate[0]) + "  |  " + str(angularRate[1]) + "  |  " + str(angularRate[2]))
+        print("MagneticField: \t" + str(magneticField[0]) + "  |  " + str(magneticField[1]) + "  |  " + str(
+            magneticField[2]))
+        print("Timestamp: " + str(timestamp))
+        print("----------")
 
     # parse gyro object data from pixhawk, can then pass to other programs
     def UpdateGyro(self):
-        self.Yaw_Discrepancy = self.Gyro[YAW] - self.Gyro_drone1.Gyro[YAW]
-        self.Pitch_Discrepancy = self.Gyro[PITCH] - self.Gyro_drone1.Gyro[PITCH]
-        self.Roll_Discrepancy = self.Gyro[ROLL] - self.Gyro_drone1.Gyro[ROLL]
-
-        if self.Yaw_Discrepancy < 20:
-            self.Gyro[YAW] = (self.Gyro_queen.Gyro[YAW] + self.Gyro_drone1.Gyro[YAW]) / 2
-        else:
-            self.Gyro[YAW] = self.Gyro_queen.Gyro[YAW]
-        if self.Pitch_Discrepancy < 20:
-            self.Gyro[PITCH] = (self.Gyro_queen.Gyro[PITCH] + self.Gyro_drone1.Gyro[PITCH]) / 2
-        else:
-            self.Gyro[PITCH] = self.Gyro_queen.Gyro[PITCH]
-        if self.Roll_Discrepancy < 20:
-            self.Gyro[ROLL] = (self.Gyro_queen.Gyro[ROLL] + self.Gyro_drone1.Gyro[ROLL]) / 2
-        else:
-            self.Gyro[ROLL] = self.Gyro_queen.Gyro[ROLL]
+        pass
 
     # parse position object data from pixhawk, can then pass to other programs
     def UpdatePosition(self):
-        self.North_Discrepancy = self.Position[NORTH] - self.Gyro_drone1.Position[NORTH]
-        self.East_Discrepancy = self.Position[EAST] - self.Gyro_drone1.Position[EAST]
-        self.Down_Discrepancy = self.Position[DOWN] - self.Gyro_drone1.Position[DOWN]
-
-        if self.North_Discrepancy < 20 and self.East_Discrepancy < 20 and self.Down_Discrepancy < 20:
-            self.Position[NORTH] = (self.Gyro_queen.Position[NORTH] + self.Gyro_drone1.Position[NORTH]) / 2
-
-            self.Position[EAST] = (self.Gyro_queen.Position[EAST] + self.Gyro_drone1.Position[EAST]) / 2
-
-            self.Position[DOWN] = (self.Gyro_queen.Position[DOWN] + self.Gyro_drone1.Position[DOWN]) / 2
-
-        else:
-            self.Position[NORTH] = self.Gyro_queen.Position[NORTH]
-
-        # print("error reading position")
-        # print(self.Position)
+        pass
 
     # position read when starting the RoboSub
     def getStartingPosition(self):
@@ -182,7 +159,6 @@ class GyroMerger:
 
     # req for PID calculation
     def CalculateError(self, yawoffset, pitchoffset, rolloffset, northoffset, eastoffset, downoffset):
-
         # previous error for error delta
         # gyro
         self.Previous_Error[GYRO][YAW] = self.Error[GYRO][YAW]
@@ -285,4 +261,5 @@ class GyroMerger:
 
     # end command/vehicle running
     def Terminate(self):
-        self.vehicle.close()
+        self.serial.write("STOP")
+        self.serial.close()

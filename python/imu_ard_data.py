@@ -1,17 +1,12 @@
 #!python3
 # Author: Theodor Giles
 # Created: 7/15/20
-# Last Edited 5/7/21
+# Last Edited 7/29/21
 # Description:
-# Retrieves data from the phidgetspatial 9dof,
-# gyro/accelerometer and positioning data
-# other cool tasks it can do
+# node for moving around IMU data from the arduino
 
-from Phidget22.Phidget import *
-from Phidget22.Devices.Spatial import *
 import time
 import re
-import math
 
 GYRO: int = 0
 POSITION: int = 1
@@ -23,18 +18,13 @@ EAST: int = 1
 DOWN: int = 2
 
 
-def MapToAngle(x):
-    in_min = -100.0
-    in_max = 100.0
-    out_min = 0.0
-    out_max = 180.0
-    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
-
-
-class Phidget9dof:
+class IMU:
     StringIn = ""
     Gyro = [0.0, 0.0, 0.0]
-    Position = [0.0, 0.0, 0.0]
+    StartingGyro = [0.0, 0.0, 0.0]
+    Acceleration = [0.0, 0.0, 0.0]
+    Velocity = [0.0, 0.0, 0.0]
+    StartingPosition = [0.0, 0.0, 0.0]
     Angular_Motions = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
     Measures = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
     Error = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
@@ -78,50 +68,34 @@ class Phidget9dof:
     Roll_I = 0.0
     Roll_D = 0.0
 
-    def __init__(self):
+    def __init__(self, arduino):
+
         # read info from vehicle
-        spatial0 = Spatial()
-
-        spatial0.setOnSpatialDataHandler(self.onSpatialData)
-
-        spatial0.openWaitForAttachment(5000)
+        self.serial = arduino
+        self.serial.flushInput()
 
         # arm vehicle to see position
-        print('Gyro Armed')
+        # print(self.serial.readline())
         # - Read the actual attitude: Roll, Pitch, and Yaw
         self.UpdateGyro()
         self.StartingGyro = self.Gyro
         print('Orientation: ', self.getStartingGyro())
 
         # - Read the actual position North, East, and Down
-        self.UpdatePosition()
-        self.StartingPosition = self.Position
-        print('Position: ', self.getStartingPosition())
+        # self.UpdatePosition()
+        # self.StartingPosition = self.Position
+        # print('Position: ', self.getStartingPosition())
 
         # - Read the actual depth:
         time.sleep(3)
         print("Starting gyro: ", self.StartingGyro)
         # print("Starting position: ", self.Position)
 
-    def onSpatialData(self, acceleration, angularRate, magneticField, timestamp):
-        print(
-            "Acceleration: \t" + str(acceleration[0]) + "  |  " + str(acceleration[1]) + "  |  " + str(acceleration[2]))
-
-        self.Position[NORTH] = acceleration[NORTH] * (timestamp**2)
-        self.Position[EAST] =  acceleration[EAST] * (timestamp**2)
-        self.Position[DOWN] = acceleration[DOWN] * (timestamp**2)
-
-        print("AngularRate: \t" + str(angularRate[0]) + "  |  " + str(angularRate[1]) + "  |  " + str(angularRate[2]))
-        print("MagneticField: \t" + str(magneticField[0]) + "  |  " + str(magneticField[1]) + "  |  " + str(
-            magneticField[2]))
-        print("Timestamp: " + str(timestamp))
-        print("----------")
-
-    # parse gyro object data from pixhawk, can then pass to other programs
+    # parse gyro object data from wt61p, can then pass to other programs
     def UpdateGyro(self):
         pass
 
-    # parse position object data from pixhawk, can then pass to other programs
+    # parse gyro object data from wt61p, can then pass to other programs
     def UpdatePosition(self):
         pass
 
@@ -131,16 +105,16 @@ class Phidget9dof:
 
     # current position read
     def getPosition(self):
-        return self.Position
+        return self.Acceleration
 
     def getNorth(self):
-        return self.Position[NORTH]
+        return self.Acceleration[NORTH]
 
     def getEast(self):
-        return self.Position[EAST]
+        return self.Acceleration[EAST]
 
     def getDown(self):
-        return self.Position[DOWN]
+        return self.Acceleration[DOWN]
 
     # gyro read when starting the RoboSub
     def getStartingGyro(self):
@@ -161,6 +135,8 @@ class Phidget9dof:
 
     # req for PID calculation
     def CalculateError(self, yawoffset, pitchoffset, rolloffset, northoffset, eastoffset, downoffset):
+
+        self.Velocity[NORTH] = self.Acceleration[NORTH]
         # previous error for error delta
         # gyro
         self.Previous_Error[GYRO][YAW] = self.Error[GYRO][YAW]
@@ -174,14 +150,17 @@ class Phidget9dof:
 
         # error for proportional control
         # gyro
-        self.Error[GYRO][YAW] = self.Gyro[YAW] - yawoffset
+        if ((180 - abs(yawoffset)) + (180 - abs(self.Gyro[YAW]))) < 180:
+            self.Error[GYRO][YAW] = self.Gyro[YAW] - yawoffset
+        elif ((abs(yawoffset)) + (abs(self.Gyro[YAW]))) < 180:
+            self.Error[GYRO][YAW] = self.Gyro[YAW] + yawoffset
         self.Error[GYRO][PITCH] = self.Gyro[PITCH] - pitchoffset
         self.Error[GYRO][ROLL] = self.Gyro[ROLL] - rolloffset
 
         # position
-        self.Error[POSITION][NORTH] = self.Position[NORTH] - northoffset
-        self.Error[POSITION][EAST] = self.Position[EAST] - eastoffset
-        self.Error[POSITION][DOWN] = self.Position[DOWN] - downoffset
+        self.Error[POSITION][NORTH] = self.Acceleration[NORTH] - northoffset
+        self.Error[POSITION][EAST] = self.Acceleration[EAST] - eastoffset
+        self.Error[POSITION][DOWN] = self.Acceleration[DOWN] - downoffset
 
         # sum of error for integral
         # gyro
@@ -260,6 +239,122 @@ class Phidget9dof:
 
     def getDownPID(self):
         return self.Roll_PID
+
+
+class WT61P(IMU):
+
+    # parse gyro object data from wt61p, can then pass to other programs
+    def UpdateGyro(self):
+        self.serial.writelines("GYRO")
+        line = str(self.serial.readline()).strip("'").split(':')
+        i = 0
+        for ColonParse in line:
+            if ColonParse is not None:
+                ColonParse = re.findall(r"[-+]?\d*\.\d+|\d+", ColonParse)
+                # print("ColonParse: ", ColonParse, i)
+                if i == 2:
+                    self.Gyro[ROLL] = float(ColonParse[0])
+                if i == 4:
+                    self.Gyro[PITCH] = float(ColonParse[0])
+                if i == 6:
+                    self.Gyro[YAW] = float(ColonParse[0])
+                    break
+            i = i + 1
+        pass
+
+    # parse position object data from wt61p, can then pass to other programs
+    def UpdatePosition(self):
+        self.serial.writelines("POSITION")
+        line = str(self.serial.readline()).strip("'").split(':')
+        i = 0
+        for ColonParse in line:
+            if ColonParse is not None:
+                ColonParse = re.findall(r"[-+]?\d*\.\d+|\d+", ColonParse)
+                # print("ColonParse: ", ColonParse, i)
+                if i == 2:
+                    self.Gyro[DOWN] = float(ColonParse[0])
+                if i == 4:
+                    self.Gyro[EAST] = float(ColonParse[0])
+                if i == 6:
+                    self.Gyro[NORTH] = float(ColonParse[0])
+                    break
+            i = i + 1
+        pass
+
+    # end command/vehicle running
+    def Terminate(self):
+        self.serial.write("STOP")
+        self.serial.close()
+
+
+class BN055(IMU):
+
+    def __init__(self, arduino):
+
+        # read info from vehicle
+        self.serial = arduino
+        self.serial.flushInput()
+
+        # arm vehicle to see position
+        # print(self.serial.readline())
+        # - Read the actual attitude: Roll, Pitch, and Yaw
+        self.UpdateGyro()
+        self.StartingGyro = self.Gyro
+        print('Orientation: ', self.getStartingGyro())
+
+        # - Read the actual position North, East, and Down
+        # self.UpdatePosition()
+        # self.StartingPosition = self.Position
+        # print('Position: ', self.getStartingPosition())
+
+        # - Read the actual depth:
+        time.sleep(3)
+        print("Starting gyro: ", self.StartingGyro)
+        # print("Starting position: ", self.Position)
+
+    # parse gyro object data from pixhawk, can then pass to other programs
+    def UpdateGyro(self):
+        self.serial.writelines("GYRO")
+        i = 0
+        time.sleep(0.01)
+        # print("Updating...")
+        line = str(self.serial.readline()).strip("'").split(':')
+        for ColonParse in line:
+            if ColonParse is not None:
+                ColonParse = re.findall(r"[-+]?\d*\.\d+|\d+", ColonParse)
+                # print("ColonParse: ", ColonParse, i)
+                if i == 2:
+                    self.Gyro[YAW] = float(ColonParse[0])
+                if i == 4:
+                    self.Gyro[PITCH] = float(ColonParse[0])
+                if i == 6:
+                    self.Gyro[ROLL] = float(ColonParse[0])
+                    break
+            i = i + 1
+        # print("Gyro: ", self.Gyro)
+
+    # parse position object data from pixhawk, can then pass to other programs
+    def UpdatePosition(self):
+        self.serial.writelines("POSITION")
+        i = 0
+        time.sleep(0.01)
+        line = str(self.serial.readline()).strip("'").split(':')
+        for ColonParse in line:
+            if ColonParse is not None:
+                ColonParse = re.findall(r"[-+]?\d*\.\d+|\d+", ColonParse)
+                if ColonParse == "Orient":
+                    break
+                if i == 2:
+                    self.Acceleration[NORTH] = float(ColonParse[0])
+                if i == 4:
+                    self.Acceleration[EAST] = float(ColonParse[0])
+                if i == 6:
+                    self.Acceleration[DOWN] = float(ColonParse[0])
+                    break
+            i = i + 1
+
+    def WriteToSerial(self, toprint):
+        self.serial.writelines(toprint)
 
     # end command/vehicle running
     def Terminate(self):
