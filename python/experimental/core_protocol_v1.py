@@ -183,7 +183,7 @@ class MovementCommander:
     def AdvancedVectoring(self):
         pass
 
-    # Concept code, basically for checking if the Sub has already seen the detected object.
+    # Concept memory
     def IsTargetInMemory(self, label, x, y, z):
         NewTarget = [label, x, y, z]
         InMemory = False
@@ -201,61 +201,6 @@ class MovementCommander:
     def SaveTargetToMemory(self, label, x, y, z, area):
         TargetInfo = [label, x, y, z, area]
         self.TargetList.append(TargetInfo)
-
-    # handles list of commands
-    def receiveCommands(self, commandlist):
-        # going through commands in parsed list
-        self.CommandIndex = 0
-        # tell arduino to arm motors
-        self.SendToArduino("STOP")
-        print("Stopping arduino... Wait 3.")
-        time.sleep(3)
-        self.SendToArduino("START")
-        print("Starting arduino... Wait 3.")
-        time.sleep(3)
-        self.SendToArduino("MAXPOWER:20")
-        print("Sending settings... Wait 3.")
-        time.sleep(3)
-        try:
-            for command in commandlist:
-                print("VectorCommander running: ", command)
-                self.MainCommand = ""
-                self.SuppCommand = ""
-                j = 0
-                for commandParsed in str(command).split(','):
-                    commandParsed.strip()
-                    if j == 0:
-                        self.MainCommand = commandParsed
-                    if j == 1:
-                        self.SuppCommand = commandParsed
-                    j = j + 1
-                print("Main: ", self.MainCommand, ", Supplementary: ", self.SuppCommand)
-                if self.MainCommand == "REMOTE":
-                    print("Driver Control With:")
-                    self.BasicDriverControl()
-                    if self.SuppCommand == "KEYBOARD":
-                        print("Keyboard!")
-                    else:
-                        pass
-                else:
-                    for basiccommand in self.BASIC_MOVEMENT_COMMANDS:
-                        i = 0
-                        if self.MainCommand == basiccommand:
-                            self.InitialTime = time.perf_counter()
-                            if self.UsingGyro:
-                                self.BasicLinear(self.SuppCommand)
-                            else:
-                                self.BasicWithTime(self.SuppCommand)
-                        i += 2
-                    for advancedcommand in self.ADVANCED_MOVEMENT_COMMANDS:
-                        i = 0
-                        if self.MainCommand == advancedcommand:
-                            self.InitialTime = time.perf_counter()
-                            self.BasicVectoring(self.SuppCommand)
-                        i += 2
-                    self.CommandIndex += 1
-        except:
-            self.Terminate()
 
     def SendToArduino(self, message):
         self.serial.write(message.encode('utf-8'))
