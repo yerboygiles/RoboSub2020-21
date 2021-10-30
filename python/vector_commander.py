@@ -7,7 +7,7 @@
 # control of the RoboSub V2, 2020-21
 
 import time
-# import random
+import random
 import math
 import serial
 import imu_ard_data
@@ -16,6 +16,14 @@ import remote_control
 
 # from threading import Thread
 
+GYRO: int = 0
+POSITION: int = 1
+YAW: int = 0
+PITCH: int = 1
+ROLL: int = 2
+NORTH: int = 0
+EAST: int = 1
+DOWN: int = 2
 # ROBOSUB
 A_TARGET = 1
 A_POSITION = 2
@@ -39,18 +47,27 @@ class NavigationCommander:
         if self.UsingGyro:
             print("Sending IMU")
             self.SendToArduino("IMU")
-            self.Gyro_drone1 = imu_ard_data.WT61P(self.serial)
+            self.IMU = imu_ard_data.WT61P(self.serial)
 
         else:
             print("Sending NOIMU")
             self.SendToArduino("NOIMU")
 
         if resetheadingoncmd:
-            self.YawOffset = self.Gyro_drone1.StartingGyro[0]
+            self.YawOffset = self.IMU.StartingGyro[0]
             self.ResetHeadingOnCMD = resetheadingoncmd
+
+        self.YawLocked = False
+        self.PitchLocked = False
+        self.RollLocked = False
+
         self.YawOffset = 0
         self.PitchOffset = 0
         self.RollOffset = 0
+
+        self.NorthLocked = False
+        self.PitchLocked = False
+        self.RollLocked = False
 
         self.EastOffset = 0
         self.NorthOffset = 0
@@ -131,15 +148,12 @@ class NavigationCommander:
             "FIRE AT",
             "FOLLOW"
         ]
-<<<<<<< HEAD
         # currently only for firing torpedoes, maybe a claw action later on?
         self.ACTION_COMMANDS = [
             "FIRE TORPEDO AT",
             "GRAB OBJECT",
             ""
         ]
-=======
->>>>>>> 426bf177d73aa21133795ffc55ce3a5c144fed18
         # name of object to target sent to TF/openCV AI
         self.TO_TARGET = ""
 
@@ -194,8 +208,30 @@ class NavigationCommander:
             Vectoring = self.GyroRunning
             self.TradeWithArduino()
 
+    def WaypointVectoring(self):
+        self.StoreGyroOffsets()
+        self.Waypoints = []
+        i = 1
+        Waypointrange = int(((self.NorthOffset+self.EastOffset+self.DownOffset)/3)/15)
+        waypointrange = 10
+        for i in range(Waypointrange):
+            self.Waypoints[i] = [((self.NorthOffset / i) + self.IMU.Offsets[NORTH]),
+                            ((self.EastOffset / i) + self.IMU.Offsets[EAST]),
+                            ((self.DownOffset / i) + self.IMU.Offsets[DOWN])]
+            n = Waypointrange - i if i > Waypointrange/2 else n = i
+            self.Waypoints[i][0] += ((self.Waypoints[i][0] * self.YawOffset/90)/5)*n
+        i = 1
+        for i in range(Waypointrange):
+            self.YawOffset = math.atan(self.Waypoints[i][1]/self.Waypoints[i][0])
+            self.PitchOffset = math.atan(self.Waypoints[i][2]/((self.Waypoints[i][0]+self.Waypoints[i][1])/2))
+            self.CheckIfGyroDone()
+            self.CheckIfPositionDone()
+            while self.PositionRunning:
+                self.CheckIfGyroDone()
+                self.CheckIfPositionDone()
+        print("Completed Waypoint Series")
     def AdvancedVectoring(self):
-        pass
+        self.StoreGyroOffsets()
 
     def TargetMovement(self):
         print("Scanning for target...")
@@ -264,12 +300,6 @@ class NavigationCommander:
                 InMemory = True
         return InMemory
 
-    # Concept code, puts target into memory
-    def saveTargetToMemory(self, label, x, y, z, area):
-        TargetInfo = [label, x, y, z, area]
-        self.TargetList.append(TargetInfo)
-
-    # handles list of commands
     def receiveCommands(self, commandlist):
         # going through commands in parsed list
         self.CommandIndex = 0
@@ -338,20 +368,52 @@ class NavigationCommander:
         except:
             self.Terminate()
 
+    def StoreGyroOffsets(self):
+        i = 0
+        for SuppParse in str(self.SuppCommand).split(':'):
+            print("SuppParse: ", SuppParse)
+            if i == 0:
+                self.YawOffset = float(SuppParse)
+                # print("YawOffset: ", self.YawOffset)
+            if i == 1:
+                self.PitchOffset = float(SuppParse)
+            if i == 2:
+                self.RollOffset = float(SuppParse)
+            if i > 2:
+                break
+            i = i + 1
+
+    def StorePositionOffsets(self):
+        i = 0
+        for SuppParse in str(self.SuppCommand).split(':'):
+            print("SuppParse: ", SuppParse)
+            if i == 0:
+                self.NorthOffset = float(SuppParse)
+                # print("YawOffset: ", self.YawOffset)
+            if i == 1:
+                self.EastOffset = float(SuppParse)
+            if i == 2:
+                self.DownOffset = float(SuppParse)
+            if i > 2:
+                break
+            i = i + 1
+
     def CheckIfGyroDone(self, threshold=15, timethreshold=5):
         # if(self.Gyro.getYaw() < 0):
         self.GyroRunning = True
         integer = 0
         self.UpdateGyro()
-        if (abs(self.Gyro_drone1.getYaw() - abs(self.YawOffset)) < threshold) and (
-                abs(self.Gyro_drone1.getPitch() - abs(self.PitchOffset)) < threshold) and (
-                abs(self.Gyro_drone1.getRoll() - abs(self.RollOffset)) < threshold):
+        self.YawLocked = (abs(self.IMU.getYaw() - abs(self.YawOffset)) < threshold)
+        self.PitchLocked = (abs(self.IMU.getPitch() - abs(self.PitchOffset)) < threshold)
+        self.RollLocked = (abs(self.IMU.getRoll() - abs(self.RollOffset)) < threshold)
+
+        if self.YawLocked and self.PitchLocked and self.RollLocked:
             self.ElapsedTime = time.perf_counter() - self.InitialTime
             print("Within gyro threshold. Waiting ", timethreshold, "...")
             if self.ElapsedTime >= timethreshold:
                 self.GyroRunning = False
         else:
-            print("Gyro:", self.Gyro_drone1.getGyro())
+            print("Gyro:", self.IMU.getGyro())
             self.InitialTime = time.perf_counter()
 
     def SendToArduino(self, whattosend):
@@ -400,9 +462,10 @@ class NavigationCommander:
 
     def CheckIfPositionDone(self, threshold=3, timethreshold=5):
         self.PositionRunning = True
-        if (abs(self.Gyro_drone1.getNorth() - self.NorthOffset) < threshold) and (
-                abs(self.Gyro_drone1.getEast() - self.EastOffset) < threshold) and (
-                abs(self.Gyro_drone1.getDown() - self.DownOffset) < threshold):
+        self.NorthLocked = (abs(self.IMU.getNorth() - self.NorthOffset) < threshold)
+        self.EastLocked = (abs(self.IMU.getEast() - self.EastOffset) < threshold)
+        self.DownLocked = (abs(self.IMU.getDown() - self.DownOffset) < threshold)
+        if self.NorthLocked and self.EastLocked and self.NorthLocked:
             self.ElapsedTime = time.perf_counter() - self.InitialTime
             print("Within position threshold. Waiting ", timethreshold, "...")
             if self.ElapsedTime >= timethreshold:
@@ -490,45 +553,45 @@ class NavigationCommander:
 
     def UpdateThrustersGyroVisionPID(self):
         self.Thruster_LateralLB.setSpeedPID(self.LateralPowerLB,
-                                            xpid=self.Gyro_drone1.getYawPID() + self.Vision.getXPID())
+                                            xpid=self.IMU.getYawPID() + self.Vision.getXPID())
         self.Thruster_LateralLF.setSpeedPID(self.LateralPowerLF,
-                                            xpid=self.Gyro_drone1.getYawPID() + self.Vision.getXPID())
+                                            xpid=self.IMU.getYawPID() + self.Vision.getXPID())
         self.Thruster_LateralRB.setSpeedPID(self.LateralPowerRB,
-                                            xpid=-self.Gyro_drone1.getYawPID() - self.Vision.getXPID())
+                                            xpid=-self.IMU.getYawPID() - self.Vision.getXPID())
         self.Thruster_LateralRF.setSpeedPID(self.LateralPowerRF,
-                                            xpid=-self.Gyro_drone1.getYawPID() - self.Vision.getXPID())
+                                            xpid=-self.IMU.getYawPID() - self.Vision.getXPID())
 
         self.Thruster_VentralLB.setSpeedPID(self.VentralPowerLB,
-                                            zpid=self.Gyro_drone1.getRollPID(),
-                                            ypid=self.Gyro_drone1.getPitchPID() + self.Vision.getYPID())
+                                            zpid=self.IMU.getRollPID(),
+                                            ypid=self.IMU.getPitchPID() + self.Vision.getYPID())
         self.Thruster_VentralRB.setSpeedPID(self.VentralPowerRB,
-                                            zpid=-self.Gyro_drone1.getRollPID(),
-                                            ypid=self.Gyro_drone1.getPitchPID() + self.Vision.getYPID())
+                                            zpid=-self.IMU.getRollPID(),
+                                            ypid=self.IMU.getPitchPID() + self.Vision.getYPID())
         self.Thruster_VentralLF.setSpeedPID(self.VentralPowerLF,
-                                            zpid=-self.Gyro_drone1.getRollPID(),
-                                            ypid=-self.Gyro_drone1.getPitchPID() - self.Vision.getYPID())
+                                            zpid=-self.IMU.getRollPID(),
+                                            ypid=-self.IMU.getPitchPID() - self.Vision.getYPID())
         self.Thruster_VentralRF.setSpeedPID(self.VentralPowerRF,
-                                            zpid=self.Gyro_drone1.getRollPID(),
-                                            ypid=-self.Gyro_drone1.getPitchPID() - self.Vision.getYPID())
+                                            zpid=self.IMU.getRollPID(),
+                                            ypid=-self.IMU.getPitchPID() - self.Vision.getYPID())
 
     def UpdateThrustersGyroPID(self):
-        self.Thruster_LateralLB.setSpeedPID(self.LateralPowerLB, xpid=self.Gyro_drone1.getYawPID())
-        self.Thruster_LateralLF.setSpeedPID(self.LateralPowerLF, xpid=self.Gyro_drone1.getYawPID())
-        self.Thruster_LateralRB.setSpeedPID(self.LateralPowerRB, xpid=-self.Gyro_drone1.getYawPID())
-        self.Thruster_LateralRF.setSpeedPID(self.LateralPowerRF, xpid=-self.Gyro_drone1.getYawPID())
+        self.Thruster_LateralLB.setSpeedPID(self.LateralPowerLB, xpid=self.IMU.getYawPID())
+        self.Thruster_LateralLF.setSpeedPID(self.LateralPowerLF, xpid=self.IMU.getYawPID())
+        self.Thruster_LateralRB.setSpeedPID(self.LateralPowerRB, xpid=-self.IMU.getYawPID())
+        self.Thruster_LateralRF.setSpeedPID(self.LateralPowerRF, xpid=-self.IMU.getYawPID())
 
         self.Thruster_VentralLB.setSpeedPID(self.VentralPowerLB,
-                                            zpid=self.Gyro_drone1.getRollPID(),
-                                            ypid=-self.Gyro_drone1.getPitchPID())
+                                            zpid=self.IMU.getRollPID(),
+                                            ypid=-self.IMU.getPitchPID())
         self.Thruster_VentralRB.setSpeedPID(self.VentralPowerRB,
-                                            zpid=-self.Gyro_drone1.getRollPID(),
-                                            ypid=-self.Gyro_drone1.getPitchPID())
+                                            zpid=-self.IMU.getRollPID(),
+                                            ypid=-self.IMU.getPitchPID())
         self.Thruster_VentralLF.setSpeedPID(self.VentralPowerLF,
-                                            zpid=-self.Gyro_drone1.getRollPID(),
-                                            ypid=-self.Gyro_drone1.getPitchPID())
+                                            zpid=-self.IMU.getRollPID(),
+                                            ypid=-self.IMU.getPitchPID())
         self.Thruster_VentralRF.setSpeedPID(self.VentralPowerRF,
-                                            zpid=self.Gyro_drone1.getRollPID(),
-                                            ypid=-self.Gyro_drone1.getPitchPID())
+                                            zpid=self.IMU.getRollPID(),
+                                            ypid=-self.IMU.getPitchPID())
 
     def UpdateThrustersVisionPID(self):
 
@@ -548,15 +611,15 @@ class NavigationCommander:
 
     def UpdateGyro(self):
         if self.UsingGyro:
-            self.Gyro_drone1.UpdateGyro()
+            self.IMU.UpdateGyro()
             # print(self.Gyro.getGyro())
-            self.Gyro_drone1.CalculateError(self.YawOffset,
-                                            self.PitchOffset,
-                                            self.RollOffset,
-                                            self.NorthOffset,
-                                            self.EastOffset,
-                                            self.DownOffset)
-            self.Gyro_drone1.PID()
+            self.IMU.CalculateError(self.YawOffset,
+                                    self.PitchOffset,
+                                    self.RollOffset,
+                                    self.NorthOffset,
+                                    self.EastOffset,
+                                    self.DownOffset)
+            self.IMU.PID()
 
     def BrakeAllThrusters(self):
         # horizontal

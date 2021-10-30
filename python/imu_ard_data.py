@@ -20,7 +20,7 @@ DOWN: int = 2
 
 class IMU:
     StringIn = ""
-    Gyro = [0.0, 0.0, 0.0]
+    Offsets = [0.0, 0.0, 0.0]
     StartingGyro = [0.0, 0.0, 0.0]
     Acceleration = [0.0, 0.0, 0.0]
     Velocity = [0.0, 0.0, 0.0]
@@ -78,7 +78,7 @@ class IMU:
         # print(self.serial.readline())
         # - Read the actual attitude: Roll, Pitch, and Yaw
         self.UpdateGyro()
-        self.StartingGyro = self.Gyro
+        self.StartingGyro = self.Offsets
         print('Orientation: ', self.getStartingGyro())
 
         # - Read the actual position North, East, and Down
@@ -122,16 +122,16 @@ class IMU:
 
     # current gyro read
     def getGyro(self):
-        return self.Gyro
+        return self.Offsets
 
     def getPitch(self):
-        return self.Gyro[PITCH]
+        return self.Offsets[PITCH]
 
     def getRoll(self):
-        return self.Gyro[ROLL]
+        return self.Offsets[ROLL]
 
     def getYaw(self):
-        return self.Gyro[YAW]
+        return self.Offsets[YAW]
 
     # req for PID calculation
     def CalculateError(self, yawoffset, pitchoffset, rolloffset, northoffset, eastoffset, downoffset):
@@ -150,12 +150,12 @@ class IMU:
 
         # error for proportional control
         # gyro
-        if ((180 - abs(yawoffset)) + (180 - abs(self.Gyro[YAW]))) < 180:
-            self.Error[GYRO][YAW] = self.Gyro[YAW] - yawoffset
-        elif ((abs(yawoffset)) + (abs(self.Gyro[YAW]))) < 180:
-            self.Error[GYRO][YAW] = self.Gyro[YAW] + yawoffset
-        self.Error[GYRO][PITCH] = self.Gyro[PITCH] - pitchoffset
-        self.Error[GYRO][ROLL] = self.Gyro[ROLL] - rolloffset
+        if ((180 - abs(yawoffset)) + (180 - abs(self.Offsets[YAW]))) < 180:
+            self.Error[GYRO][YAW] = self.Offsets[YAW] - yawoffset
+        elif ((abs(yawoffset)) + (abs(self.Offsets[YAW]))) < 180:
+            self.Error[GYRO][YAW] = self.Offsets[YAW] + yawoffset
+        self.Error[GYRO][PITCH] = self.Offsets[PITCH] - pitchoffset
+        self.Error[GYRO][ROLL] = self.Offsets[ROLL] - rolloffset
 
         # position
         self.Error[POSITION][NORTH] = self.Acceleration[NORTH] - northoffset
@@ -253,11 +253,11 @@ class WT61P(IMU):
                 ColonParse = re.findall(r"[-+]?\d*\.\d+|\d+", ColonParse)
                 # print("ColonParse: ", ColonParse, i)
                 if i == 2:
-                    self.Gyro[ROLL] = float(ColonParse[0])
+                    self.Offsets[ROLL] = float(ColonParse[0])
                 if i == 4:
-                    self.Gyro[PITCH] = float(ColonParse[0])
+                    self.Offsets[PITCH] = float(ColonParse[0])
                 if i == 6:
-                    self.Gyro[YAW] = float(ColonParse[0])
+                    self.Offsets[YAW] = float(ColonParse[0])
                     break
             i = i + 1
         pass
@@ -272,11 +272,11 @@ class WT61P(IMU):
                 ColonParse = re.findall(r"[-+]?\d*\.\d+|\d+", ColonParse)
                 # print("ColonParse: ", ColonParse, i)
                 if i == 2:
-                    self.Gyro[DOWN] = float(ColonParse[0])
+                    self.Offsets[DOWN] = float(ColonParse[0])
                 if i == 4:
-                    self.Gyro[EAST] = float(ColonParse[0])
+                    self.Offsets[EAST] = float(ColonParse[0])
                 if i == 6:
-                    self.Gyro[NORTH] = float(ColonParse[0])
+                    self.Offsets[NORTH] = float(ColonParse[0])
                     break
             i = i + 1
         pass
@@ -299,7 +299,7 @@ class BN055(IMU):
         # print(self.serial.readline())
         # - Read the actual attitude: Roll, Pitch, and Yaw
         self.UpdateGyro()
-        self.StartingGyro = self.Gyro
+        self.StartingGyro = self.Offsets
         print('Orientation: ', self.getStartingGyro())
 
         # - Read the actual position North, East, and Down
@@ -324,11 +324,11 @@ class BN055(IMU):
                 ColonParse = re.findall(r"[-+]?\d*\.\d+|\d+", ColonParse)
                 # print("ColonParse: ", ColonParse, i)
                 if i == 2:
-                    self.Gyro[YAW] = float(ColonParse[0])
+                    self.Offsets[YAW] = float(ColonParse[0])
                 if i == 4:
-                    self.Gyro[PITCH] = float(ColonParse[0])
+                    self.Offsets[PITCH] = float(ColonParse[0])
                 if i == 6:
-                    self.Gyro[ROLL] = float(ColonParse[0])
+                    self.Offsets[ROLL] = float(ColonParse[0])
                     break
             i = i + 1
         # print("Gyro: ", self.Gyro)
